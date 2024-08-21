@@ -2,7 +2,7 @@ use std::env::args;
 use std::fs;
 use std::path::Path;
 use std::process::exit;
-
+use std::time::Instant;
 
 static EXCLUDE_DIR: &[&str] = &[
     "node_modules",
@@ -22,7 +22,10 @@ fn main() {
     let base_dir = args.next().unwrap();
     let mut cmd = std::process::Command::new("cargo");
     cmd.args(["clean"]);
-    do_clean(Path::new(&base_dir), &mut cmd)
+    let start = Instant::now();
+    do_clean(Path::new(&base_dir), &mut cmd);
+    let elapsed = start.elapsed();
+    println!("\n\x1B[32mdo_clean took {} seconds\x1B[0m", elapsed.as_secs_f64());
 }
 
 fn do_clean(dir: &Path, cmd: &mut std::process::Command) {
@@ -37,7 +40,7 @@ fn do_clean(dir: &Path, cmd: &mut std::process::Command) {
         }
         let cargo_toml_path = dir.join("Cargo.toml");
         if cargo_toml_path.exists() {
-            println!("clean {}", dir.display());
+            println!("\x1B[31mclean {}\x1B[0m", dir.display());
             cmd.current_dir(dir);
             let _ = cmd.output().map_err(|e| {
                 eprintln!("{dir:?} > {e:?}");
