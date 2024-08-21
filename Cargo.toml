@@ -3,6 +3,15 @@ name = "rs_clean"
 version = "0.1.0"
 edition = "2021"
 
+description = "Rust project that provides a command-line tool designed for cleaning up build artifacts within projects. "
+authors = ["coderpwh"]
+repository = "https://github.com/pwh-pwh/rs_clean"
+license = "MIT"
+readme = "./README.md"
+rust-version = "1.80"
+keywords = ["cli", "tools", "clean-tools"]
+categories = ["command-line-utilities","development-tools"]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
