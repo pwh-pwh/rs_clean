@@ -14,4 +14,5 @@ cargo install --git https://github.com/pwh-pwh/rs_clean.git
 ```
 
 ## todo
-show time
+
+1. support go,gradle,maven project
