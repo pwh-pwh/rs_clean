@@ -14,4 +14,8 @@ categories = ["command-line-utilities","development-tools"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[[bin]]
+name = "rs_clean"
+path = "src/main.rs"
+
 [dependencies]
