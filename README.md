@@ -5,12 +5,12 @@
 ## Quick Start
 
 ```console
-$ cargo run  folder/
+$ rs_clean  folder/
 ```
 ## install
 
 ```shell
-cargo install --git https://github.com/pwh-pwh/rs_clean.git
+cargo install rs_clean
 ```
 
 ## todo
