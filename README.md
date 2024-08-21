@@ -7,6 +7,11 @@
 ```console
 $ cargo run  folder/
 ```
+## install
+
+```shell
+cargo install --git https://github.com/pwh-pwh/rs_clean.git
+```
 
 ## todo
 show time
