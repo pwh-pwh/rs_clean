@@ -21,6 +21,16 @@ pub fn get_cmd_map() -> &'static HashMap<&'static str, Vec<&'static str>> {
         INIT.call_once(|| {
             let mut m = HashMap::new();
             m.insert("cargo", vec!["Cargo.toml"]);
+            m.insert("go", vec!["go.mod"]);
+            m.insert("gradle", vec!["build.gradle","build.gradle.kts"]);
+            #[cfg(not(target_os = "windows"))]
+            {
+                m.insert("mvn", vec!["pom.xml"]);
+            }
+            #[cfg(target_os = "windows")]
+            {
+                m.insert("mvn.cmd", vec!["pom.xml"]);
+            }
             CMD_MAP = Some(m);
         });
         CMD_MAP.as_ref().expect("CMD_MAP was not initialized")
