@@ -1,14 +1,12 @@
 mod constant;
 mod cmd;
+mod utils;
 
 use crate::constant::EXCLUDE_DIR;
 use std::fs;
 use std::path::Path;
 use std::process::{exit, Command};
 
-pub fn command_exists(cmd: &str) -> bool {
-    Command::new(cmd).args(["--version"]).output().is_ok()
-}
 
 pub fn do_clean(dir: &Path, cmd: &mut Command) {
     if dir.is_dir() {
