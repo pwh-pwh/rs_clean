@@ -31,6 +31,9 @@ fn do_clean(dir: &Path, cmd: &mut std::process::Command) {
             if EXCLUDE_DIR.contains(&dir_name.to_str().unwrap()) {
                 return;
             }
+            if dir_name.to_str().unwrap().starts_with(".") {
+                return;
+            }
         }
         let cargo_toml_path = dir.join("Cargo.toml");
         if cargo_toml_path.exists() {
