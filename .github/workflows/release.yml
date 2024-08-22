@@ -50,4 +50,4 @@ jobs:
       - name: Release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: "artifacts/*"
+          artifacts: ${{ matrix.release-name }}
