@@ -46,10 +46,8 @@ mod tests {
         let mut cmd_list = vec![];
         //遍历map
         for (key, value) in map {
-            for v in value {
-                cmd_list.push(Cmd::new(key, vec![v]));
-            }
+            cmd_list.push(Cmd::new(key, value.clone()));
         }
-        assert_eq!(cmd_list.len(), 1);
+        assert_eq!(cmd_list.len(), 4);
     }
 }
