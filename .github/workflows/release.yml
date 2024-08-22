@@ -1,0 +1,30 @@
+name: Release
+on:
+  push:
+    tags:
+      - v*
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            archive-name: rs_clean
+          - os: macos-latest
+            archive-name: rs_clean
+          - os: windows-latest
+            archive-name: rs_clean.exe
+
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build
+        run: cargo build --release
+      - name: Release
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: 'target/release/${{ matrix.archive-name }}'
