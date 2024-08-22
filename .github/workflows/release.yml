@@ -12,10 +12,14 @@ jobs:
         include:
           - os: ubuntu-latest
             archive-name: rs_clean
+            release-name: rs_clean_linux
           - os: macos-latest
             archive-name: rs_clean
+            release-name: rs_clean_mac
           - os: windows-latest
             archive-name: rs_clean.exe
+            release-name: rs_clean.exe
+      fail-fast: false
 
     runs-on: ${{ matrix.os }}
     permissions:
@@ -24,7 +28,9 @@ jobs:
       - uses: actions/checkout@v3
       - name: Build
         run: cargo build --release
+      - name: Rename
+        run: mv target/release/${{ matrix.archive-name }} target/release/${{ matrix.release-name }}
       - name: Release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: 'target/release/${{ matrix.archive-name }}'
+          artifacts: 'target/release/${{ matrix.release-name }}'
