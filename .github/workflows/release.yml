@@ -33,8 +33,8 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.release-name }}
-          path: target/release/
+          name: ${{ matrix.os }}-artifact
+          path: target/release/${{ matrix.release-name }}
 
   publish:
     name: Publish
@@ -45,12 +45,22 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-      - name: Download
+      - name: Download Linux Artifact
         uses: actions/download-artifact@v4
         with:
-          name: ${{ matrix.release-name }}
+          name: ubuntu-latest-artifact
+          path: ./artifacts
+      - name: Download macOS Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-latest-artifact
+          path: ./artifacts
+      - name: Download Windows Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-latest-artifact
           path: ./artifacts
       - name: Release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: 'artifacts/**'
+          artifacts: './artifacts/**'
