@@ -7,6 +7,9 @@ use std::fs;
 use std::path::Path;
 use std::process::{exit, Command};
 
+
+pub static mut COUNT: u32 = 0;
+
 pub fn do_clean_all(dir: &Path,cmd_list: &mut Vec<cmd::Cmd>) {
     if dir.is_dir() {
         if let Some(dir_name) = dir.file_name() {
@@ -20,8 +23,9 @@ pub fn do_clean_all(dir: &Path,cmd_list: &mut Vec<cmd::Cmd>) {
         //定义变量flag 记录是否存在符合条件的文件
         let mut flag = false;
         cmd_list.iter_mut().for_each(|cmd| {
-            cmd.related_files.clone().iter().for_each(|file| {
+            cmd.related_files.clone().iter().for_each(|file| unsafe {
                 if dir.join(file).exists() {
+                    COUNT += 1;
                     flag = true;
                     println!("\x1B[90mrun:\x1B[0m \x1B[31m {} clean\x1B[0m {}",cmd.name, dir.display());
                     cmd.current_dir(dir);

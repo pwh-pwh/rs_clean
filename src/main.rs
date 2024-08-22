@@ -1,18 +1,15 @@
 use rs_clean::cmd::Cmd;
 use rs_clean::constant::get_cmd_map;
+use rs_clean::{do_clean_all, COUNT};
 use rs_clean::utils::command_exists;
-use rs_clean::do_clean_all;
 use std::env::args;
 use std::path::Path;
-use std::process::Command;
 use std::time::Instant;
 
 fn main() {
     let mut args = args();
     let _ = args.next().unwrap();
-    let base_dir = args.next().unwrap();
-    let mut cmd = Command::new("cargo");
-    cmd.args(["clean"]);
+    let base_dir = args.next().unwrap_or(".".to_string());
     let start = Instant::now();
     let map = get_cmd_map();
     let mut cmd_list = vec![];
@@ -27,8 +24,10 @@ fn main() {
     println!("find supports clean command is \x1B[34m{:?}\x1B[0m", init_cmd);
     do_clean_all(Path::new(&base_dir), &mut cmd_list);
     let elapsed = start.elapsed();
-    println!(
-        "\n\x1B[32mdo_clean took {} seconds\x1B[0m",
-        elapsed.as_secs_f64()
-    );
+    unsafe {
+        println!(
+            "\n\x1B[32m rs_clean clean {} packages took {} seconds\x1B[0m", COUNT,
+            elapsed.as_secs_f64()
+        );
+    }
 }
