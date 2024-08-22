@@ -31,6 +31,7 @@ impl<'a> Cmd<'a> {
 #[cfg(test)]
 mod tests {
     use crate::constant::get_cmd_map;
+    use crate::utils::command_exists;
     use super::*;
     
     #[test]
@@ -46,7 +47,9 @@ mod tests {
         let mut cmd_list = vec![];
         //遍历map
         for (key, value) in map {
-            cmd_list.push(Cmd::new(key, value.clone()));
+            if command_exists(key) {
+                cmd_list.push(Cmd::new(key, value.clone()));
+            }
         }
         assert_eq!(cmd_list.len(), 4);
     }
