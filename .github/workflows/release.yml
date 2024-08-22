@@ -47,8 +47,7 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: ${{ matrix.release-name }}
-          path: './release'
       - name: Release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: './release/${{ matrix.release-name }}/**'
+          artifacts: 'rs_clean/**'
