@@ -33,6 +33,7 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
+          name: ${{ matrix.release-name }}
           path: target/release/${{ matrix.release-name }}
 
   publish:
@@ -48,9 +49,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: ./artifacts
-      - name: ls file
-        run: ls -R ./artifacts
       - name: Release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: 'artifacts/${{ matrix.release-name }}/${{ matrix.release-name }}'
+          artifacts: 'artifacts/rs_clean_linux/rs_clean_linux,artifacts/rs_clean_mac/rs_clean_mac,artifacts/rs_clean.exe/rs_clean.exe'
