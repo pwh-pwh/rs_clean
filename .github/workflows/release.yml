@@ -40,6 +40,8 @@ jobs:
     name: Publish
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Download
         uses: actions/download-artifact@v3
