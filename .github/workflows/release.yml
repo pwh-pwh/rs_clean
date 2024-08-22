@@ -34,7 +34,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.release-name }}
-          path: target/release/${{ matrix.release-name }}
+          path: target/release/
 
   publish:
     name: Publish
@@ -53,4 +53,4 @@ jobs:
       - name: Release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: 'artifacts/rs_clean_linux/**'
+          artifacts: 'artifacts/**'
