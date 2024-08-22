@@ -13,6 +13,7 @@ $ rs_clean  folder/
 cargo install rs_clean
 ```
 
+or get by release to install
 ## todo
 
 1. support go,gradle,maven project
