@@ -51,4 +51,4 @@ jobs:
       - name: Release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: ./artifacts/${{ matrix.release-name }}
+          artifacts: "artifacts/*"
