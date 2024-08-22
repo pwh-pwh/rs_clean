@@ -50,9 +50,7 @@ jobs:
         with:
           name: ${{ matrix.release-name }}
           path: ./artifacts
-      - name: ls file
-        run: ls -R ./artifacts
       - name: Release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: 'artifacts/**'
+          artifacts: 'artifacts/${{ matrix.release-name }}/${{ matrix.release-name }}'
