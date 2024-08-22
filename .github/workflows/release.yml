@@ -30,7 +30,23 @@ jobs:
         run: cargo build --release
       - name: Rename
         run: mv target/release/${{ matrix.archive-name }} target/release/${{ matrix.release-name }}
+      - name: Upload
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.release-name }}
+          path: target/release/${{ matrix.release-name }}
+
+  publish:
+    name: Publish
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ matrix.release-name }}
+          path: ./artifacts
       - name: Release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: 'target/release/${{ matrix.release-name }}'
+          artifacts: ${{ matrix.release-name }}
