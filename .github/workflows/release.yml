@@ -31,7 +31,7 @@ jobs:
       - name: Rename
         run: mv target/release/${{ matrix.archive-name }} target/release/${{ matrix.release-name }}
       - name: Upload
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.release-name }}
           path: target/release/${{ matrix.release-name }}
@@ -43,11 +43,14 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
       - name: Download
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: ${{ matrix.release-name }}
+          path: ./artifacts
       - name: Release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: 'rs_clean/**'
+          artifacts: 'artifacts/**'
