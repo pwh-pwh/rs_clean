@@ -2,7 +2,7 @@
 
 > ⚡ Easily remove compiled build artifacts from Rust, Go, Gradle, and Maven projects with a single command.
 
-📘 Looking for Chinese docs? [View 中文说明 🇨🇳](./README.zh.md)
+📘 Looking for Chinese docs? [View 中文说明 🇨🇳](./README_zh.md)
 
 
 ## 🚀 Quick Start
