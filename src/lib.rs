@@ -13,10 +13,16 @@ pub static mut COUNT: u32 = 0;
 pub fn do_clean_all(dir: &Path,cmd_list: &mut Vec<cmd::Cmd>) {
     if dir.is_dir() {
         if let Some(dir_name) = dir.file_name() {
-            if EXCLUDE_DIR.contains(&dir_name.to_str().unwrap()) {
-                return;
-            }
-            if dir_name.to_str().unwrap().starts_with(".") {
+            // Handle invalid UTF-8 characters safely
+            if let Some(dir_str) = dir_name.to_str() {
+                if EXCLUDE_DIR.contains(&dir_str) {
+                    return;
+                }
+                if dir_str.starts_with(".") {
+                    return;
+                }
+            } else {
+                // Skip directories with invalid UTF-8 names
                 return;
             }
         }
@@ -37,11 +43,14 @@ pub fn do_clean_all(dir: &Path,cmd_list: &mut Vec<cmd::Cmd>) {
             })
         });
         if !flag {
-            for entry in fs::read_dir(dir).unwrap() {
-                let entry = entry.unwrap();
-                let path = entry.path();
-                if path.is_dir() {
-                    do_clean_all(&path, cmd_list);
+            if let Ok(entries) = fs::read_dir(dir) {
+                for entry in entries {
+                    if let Ok(entry) = entry {
+                        let path = entry.path();
+                        if path.is_dir() {
+                            do_clean_all(&path, cmd_list);
+                        }
+                    }
                 }
             }
         }
@@ -51,10 +60,16 @@ pub fn do_clean_all(dir: &Path,cmd_list: &mut Vec<cmd::Cmd>) {
 pub fn do_clean(dir: &Path, cmd: &mut Command) {
     if dir.is_dir() {
         if let Some(dir_name) = dir.file_name() {
-            if EXCLUDE_DIR.contains(&dir_name.to_str().unwrap()) {
-                return;
-            }
-            if dir_name.to_str().unwrap().starts_with(".") {
+            // Handle invalid UTF-8 characters safely
+            if let Some(dir_str) = dir_name.to_str() {
+                if EXCLUDE_DIR.contains(&dir_str) {
+                    return;
+                }
+                if dir_str.starts_with(".") {
+                    return;
+                }
+            } else {
+                // Skip directories with invalid UTF-8 names
                 return;
             }
         }
@@ -67,11 +82,14 @@ pub fn do_clean(dir: &Path, cmd: &mut Command) {
                 exit(1)
             });
         } else {
-            for entry in fs::read_dir(dir).unwrap() {
-                let entry = entry.unwrap();
-                let path = entry.path();
-                if path.is_dir() {
-                    do_clean(&path, cmd);
+            if let Ok(entries) = fs::read_dir(dir) {
+                for entry in entries {
+                    if let Ok(entry) = entry {
+                        let path = entry.path();
+                        if path.is_dir() {
+                            do_clean(&path, cmd);
+                        }
+                    }
                 }
             }
         }
