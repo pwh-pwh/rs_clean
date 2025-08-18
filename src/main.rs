@@ -8,8 +8,8 @@ use std::time::Instant;
 
 fn main() {
     let mut args = args();
-    let _ = args.next().unwrap();
-    let base_dir = args.next().unwrap_or(".".to_string());
+    let _program_name = args.next(); // Skip program name, safe to ignore
+    let base_dir = args.next().unwrap_or_else(|| ".".to_string());
     let start = Instant::now();
     let map = get_cmd_map();
     let mut cmd_list = vec![];

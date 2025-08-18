@@ -37,11 +37,14 @@ pub fn do_clean_all(dir: &Path,cmd_list: &mut Vec<cmd::Cmd>) {
             })
         });
         if !flag {
-            for entry in fs::read_dir(dir).unwrap() {
-                let entry = entry.unwrap();
-                let path = entry.path();
-                if path.is_dir() {
-                    do_clean_all(&path, cmd_list);
+            if let Ok(entries) = fs::read_dir(dir) {
+                for entry in entries {
+                    if let Ok(entry) = entry {
+                        let path = entry.path();
+                        if path.is_dir() {
+                            do_clean_all(&path, cmd_list);
+                        }
+                    }
                 }
             }
         }
@@ -67,11 +70,14 @@ pub fn do_clean(dir: &Path, cmd: &mut Command) {
                 exit(1)
             });
         } else {
-            for entry in fs::read_dir(dir).unwrap() {
-                let entry = entry.unwrap();
-                let path = entry.path();
-                if path.is_dir() {
-                    do_clean(&path, cmd);
+            if let Ok(entries) = fs::read_dir(dir) {
+                for entry in entries {
+                    if let Ok(entry) = entry {
+                        let path = entry.path();
+                        if path.is_dir() {
+                            do_clean(&path, cmd);
+                        }
+                    }
                 }
             }
         }
