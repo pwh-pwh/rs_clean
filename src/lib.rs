@@ -2,7 +2,7 @@ pub mod constant;
 pub mod cmd;
 pub mod utils;
 
-use crate::constant::EXCLUDE_DIR;
+use crate::constant::{EXCLUDE_DIR, COLOR_RED, COLOR_GRAY, COLOR_RESET};
 use std::fs;
 use std::path::Path;
 use std::process::{exit, Command};
@@ -32,7 +32,7 @@ pub fn do_clean_all(dir: &Path,cmd_list: &mut Vec<cmd::Cmd>) -> u32 {
                 if dir.join(file).exists() {
                     count += 1;
                     flag = true;
-                    println!("\x1B[90mrun:\x1B[0m \x1B[31m {} clean\x1B[0m {}",cmd.name, dir.display());
+                    println!("{}run:{} {} clean{} {}", COLOR_GRAY, COLOR_RESET, COLOR_RED, COLOR_RESET, dir.display());
                     cmd.current_dir(dir);
                     let _ = cmd.run().map_err(|e| {
                         eprintln!("{dir:?} > {e:?}");
@@ -75,7 +75,7 @@ pub fn do_clean(dir: &Path, cmd: &mut Command) {
         }
         let cargo_toml_path = dir.join("Cargo.toml");
         if cargo_toml_path.exists() {
-            println!("\x1B[31mclean {}\x1B[0m", dir.display());
+            println!("{}clean{} {}", COLOR_RED, COLOR_RESET, dir.display());
             cmd.current_dir(dir);
             let _ = cmd.output().map_err(|e| {
                 eprintln!("{dir:?} > {e:?}");
