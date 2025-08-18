@@ -1,6 +1,6 @@
 use rs_clean::cmd::Cmd;
 use rs_clean::constant::get_cmd_map;
-use rs_clean::{do_clean_all, COUNT};
+use rs_clean::do_clean_all;
 use rs_clean::utils::command_exists;
 use std::env::args;
 use std::path::Path;
@@ -22,12 +22,10 @@ fn main() {
         cmd.name.to_string()
     }).collect();
     println!("find supports clean command is \x1B[34m{:?}\x1B[0m", init_cmd);
-    do_clean_all(Path::new(&base_dir), &mut cmd_list);
+    let count = do_clean_all(Path::new(&base_dir), &mut cmd_list);
     let elapsed = start.elapsed();
-    unsafe {
-        println!(
-            "\n\x1B[32m rs_clean clean {} packages took {} seconds\x1B[0m", COUNT,
-            elapsed.as_secs_f64()
-        );
-    }
+    println!(
+        "\n\x1B[32m rs_clean clean {} packages took {} seconds\x1B[0m", count,
+        elapsed.as_secs_f64()
+    );
 }
