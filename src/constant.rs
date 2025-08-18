@@ -13,6 +13,13 @@ pub static EXCLUDE_DIR: &[&str] = &[
     "test",
 ];
 
+// ANSI color codes for terminal output
+pub const COLOR_BLUE: &str = "\x1B[34m";
+pub const COLOR_RED: &str = "\x1B[31m";
+pub const COLOR_GREEN: &str = "\x1B[32m";
+pub const COLOR_GRAY: &str = "\x1B[90m";
+pub const COLOR_RESET: &str = "\x1B[0m";
+
 static INIT: Once = Once::new();
 static mut CMD_MAP: Option<HashMap<&'static str, Vec<&'static str>>> = None;
 
