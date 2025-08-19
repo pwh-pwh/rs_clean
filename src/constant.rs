@@ -28,6 +28,9 @@ pub fn get_cmd_map() -> &'static HashMap<&'static str, Vec<&'static str>> {
         m.insert("cargo", vec!["Cargo.toml"]);
         m.insert("go", vec!["go.mod"]);
         m.insert("gradle", vec!["build.gradle","build.gradle.kts"]);
+        m.insert("npm", vec!["package.json"]);
+        m.insert("yarn", vec!["yarn.lock", "package.json"]);
+        m.insert("pnpm", vec!["pnpm-lock.yaml", "package.json"]);
         #[cfg(not(target_os = "windows"))]
         {
             m.insert("mvn", vec!["pom.xml"]);
