@@ -36,7 +36,7 @@ mod tests {
     
     #[test]
     fn test_cmd() {
-        let mut cmd = Cmd::new("cargo", vec!["Cargo.toml"]);
+        let cmd = Cmd::new("cargo", vec!["Cargo.toml"]);
         assert_eq!(cmd.name, "cargo");
         assert_eq!(cmd.related_files, vec!["Cargo.toml"]);
     }

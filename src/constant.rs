@@ -49,6 +49,33 @@ mod tests {
     
     #[test]
     fn test_get_cmd_map() {
-        assert_eq!(get_cmd_map().get("cargo"), Some(&vec!["Cargo.toml"]));
+        let map = get_cmd_map();
+        
+        // 测试 Rust 命令
+        assert_eq!(map.get("cargo"), Some(&vec!["Cargo.toml"]));
+        
+        // 测试 Go 命令
+        assert_eq!(map.get("go"), Some(&vec!["go.mod"]));
+        
+        // 测试 Gradle 命令
+        assert_eq!(map.get("gradle"), Some(&vec!["build.gradle", "build.gradle.kts"]));
+        
+        // 测试 Node.js 命令
+        assert_eq!(map.get("npm"), Some(&vec!["package.json"]));
+        assert_eq!(map.get("yarn"), Some(&vec!["yarn.lock", "package.json"]));
+        assert_eq!(map.get("pnpm"), Some(&vec!["pnpm-lock.yaml", "package.json"]));
+        
+        // 测试 Maven 命令（平台相关）
+        #[cfg(not(target_os = "windows"))]
+        {
+            assert_eq!(map.get("mvn"), Some(&vec!["pom.xml"]));
+        }
+        #[cfg(target_os = "windows")]
+        {
+            assert_eq!(map.get("mvn.cmd"), Some(&vec!["pom.xml"]));
+        }
+        
+        // 验证总数
+        assert_eq!(map.len(), 7);
     }
 }
