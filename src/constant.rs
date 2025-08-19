@@ -43,6 +43,11 @@ pub fn get_cmd_map() -> &'static HashMap<&'static str, Vec<&'static str>> {
     })
 }
 
+// 定义需要特殊处理的命令（不执行 clean 子命令，而是直接删除文件/文件夹）
+pub fn get_special_clean_commands() -> &'static [&'static str] {
+    &["npm", "yarn", "pnpm"]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

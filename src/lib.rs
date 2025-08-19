@@ -33,11 +33,22 @@ pub fn do_clean_all(dir: &Path,cmd_list: &mut Vec<cmd::Cmd>) -> u32 {
                     count += 1;
                     flag = true;
                     println!("{}run:{} {} clean{} {}", COLOR_GRAY, COLOR_RESET, COLOR_RED, COLOR_RESET, dir.display());
-                    cmd.current_dir(dir);
-                    let _ = cmd.run().map_err(|e| {
-                        eprintln!("{dir:?} > {e:?}");
-                        exit(1)
-                    });
+                    
+                    // 检查是否为需要特殊处理的命令
+                    if cmd.is_special_clean_command() {
+                        // 执行特殊清理逻辑
+                        if let Err(e) = cmd.run_special_clean(dir) {
+                            eprintln!("{dir:?} > {e:?}");
+                            exit(1)
+                        }
+                    } else {
+                        // 执行标准的 clean 命令
+                        cmd.current_dir(dir);
+                        let _ = cmd.run().map_err(|e| {
+                            eprintln!("{dir:?} > {e:?}");
+                            exit(1)
+                        });
+                    }
                 }
             })
         });
