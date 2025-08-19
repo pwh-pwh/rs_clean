@@ -30,13 +30,13 @@ impl<'a> Cmd<'a> {
     
     // 检查是否为需要特殊处理的命令
     pub fn is_special_clean_command(&self) -> bool {
-        matches!(self.name, "npm" | "yarn" | "pnpm")
+        self.name == "nodejs"
     }
     
     // 执行特殊清理逻辑
     pub fn run_special_clean(&self, dir: &Path) -> io::Result<()> {
         match self.name {
-            "npm" | "yarn" | "pnpm" => self.clean_nodejs_project(dir),
+            "nodejs" => self.clean_nodejs_project(dir),
             _ => Ok(())
         }
     }
@@ -56,43 +56,6 @@ impl<'a> Cmd<'a> {
             }
         }
         
-        // 删除 package-lock.json
-        let package_lock = dir.join("package-lock.json");
-        if package_lock.exists() {
-            if let Err(e) = fs::remove_file(&package_lock) {
-                eprintln!("Failed to remove {}: {}", package_lock.display(), e);
-            } else {
-                cleaned_count += 1;
-                println!("Removed package-lock.json");
-            }
-        }
-        
-        // 删除 yarn.lock (如果是 yarn 项目)
-        if self.name == "yarn" {
-            let yarn_lock = dir.join("yarn.lock");
-            if yarn_lock.exists() {
-                if let Err(e) = fs::remove_file(&yarn_lock) {
-                    eprintln!("Failed to remove {}: {}", yarn_lock.display(), e);
-                } else {
-                    cleaned_count += 1;
-                    println!("Removed yarn.lock");
-                }
-            }
-        }
-        
-        // 删除 pnpm-lock.yaml (如果是 pnpm 项目)
-        if self.name == "pnpm" {
-            let pnpm_lock = dir.join("pnpm-lock.yaml");
-            if pnpm_lock.exists() {
-                if let Err(e) = fs::remove_file(&pnpm_lock) {
-                    eprintln!("Failed to remove {}: {}", pnpm_lock.display(), e);
-                } else {
-                    cleaned_count += 1;
-                    println!("Removed pnpm-lock.yaml");
-                }
-            }
-        }
-        
         // 删除 .npm 缓存文件夹
         let npm_cache = dir.join(".npm");
         if npm_cache.exists() {
@@ -104,16 +67,14 @@ impl<'a> Cmd<'a> {
             }
         }
         
-        // 删除 .yarn 缓存文件夹 (如果是 yarn 项目)
-        if self.name == "yarn" {
-            let yarn_cache = dir.join(".yarn");
-            if yarn_cache.exists() {
-                if let Err(e) = fs::remove_dir_all(&yarn_cache) {
-                    eprintln!("Failed to remove {}: {}", yarn_cache.display(), e);
-                } else {
-                    cleaned_count += 1;
-                    println!("Removed .yarn/");
-                }
+        // 删除 .yarn 缓存文件夹
+        let yarn_cache = dir.join(".yarn");
+        if yarn_cache.exists() {
+            if let Err(e) = fs::remove_dir_all(&yarn_cache) {
+                eprintln!("Failed to remove {}: {}", yarn_cache.display(), e);
+            } else {
+                cleaned_count += 1;
+                println!("Removed .yarn/");
             }
         }
         
@@ -157,14 +118,10 @@ mod tests {
     
     #[test]
     fn test_special_clean_commands() {
-        let npm_cmd = Cmd::new("npm", vec!["package.json"]);
-        let yarn_cmd = Cmd::new("yarn", vec!["package.json"]);
-        let pnpm_cmd = Cmd::new("pnpm", vec!["package.json"]);
+        let nodejs_cmd = Cmd::new("nodejs", vec!["package.json"]);
         let cargo_cmd = Cmd::new("cargo", vec!["Cargo.toml"]);
         
-        assert!(npm_cmd.is_special_clean_command());
-        assert!(yarn_cmd.is_special_clean_command());
-        assert!(pnpm_cmd.is_special_clean_command());
+        assert!(nodejs_cmd.is_special_clean_command());
         assert!(!cargo_cmd.is_special_clean_command());
     }
 }

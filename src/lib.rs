@@ -27,6 +27,19 @@ pub fn do_clean_all(dir: &Path,cmd_list: &mut Vec<cmd::Cmd>) -> u32 {
         }
         //定义变量flag 记录是否存在符合条件的文件
         let mut flag = false;
+        
+        // Check for node_modules directory
+        let node_modules_path = dir.join("node_modules");
+        if node_modules_path.exists() && node_modules_path.is_dir() {
+            count += 1;
+            flag = true;
+            println!("{}remove:{} node_modules{} {}", COLOR_GRAY, COLOR_RESET, COLOR_RED, dir.display());
+            if let Err(e) = fs::remove_dir_all(&node_modules_path) {
+                eprintln!("{dir:?} > {e:?}");
+                exit(1)
+            }
+        }
+        
         cmd_list.iter_mut().for_each(|cmd| {
             cmd.related_files.clone().iter().for_each(|file| {
                 if dir.join(file).exists() {

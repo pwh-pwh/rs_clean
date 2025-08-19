@@ -28,9 +28,7 @@ pub fn get_cmd_map() -> &'static HashMap<&'static str, Vec<&'static str>> {
         m.insert("cargo", vec!["Cargo.toml"]);
         m.insert("go", vec!["go.mod"]);
         m.insert("gradle", vec!["build.gradle","build.gradle.kts"]);
-        m.insert("npm", vec!["package.json"]);
-        m.insert("yarn", vec!["yarn.lock", "package.json"]);
-        m.insert("pnpm", vec!["pnpm-lock.yaml", "package.json"]);
+        m.insert("nodejs", vec!["package.json"]); // 统一使用 nodejs 标识符
         #[cfg(not(target_os = "windows"))]
         {
             m.insert("mvn", vec!["pom.xml"]);
@@ -45,7 +43,7 @@ pub fn get_cmd_map() -> &'static HashMap<&'static str, Vec<&'static str>> {
 
 // 定义需要特殊处理的命令（不执行 clean 子命令，而是直接删除文件/文件夹）
 pub fn get_special_clean_commands() -> &'static [&'static str] {
-    &["npm", "yarn", "pnpm"]
+    &["nodejs"]
 }
 
 #[cfg(test)]
@@ -66,9 +64,7 @@ mod tests {
         assert_eq!(map.get("gradle"), Some(&vec!["build.gradle", "build.gradle.kts"]));
         
         // 测试 Node.js 命令
-        assert_eq!(map.get("npm"), Some(&vec!["package.json"]));
-        assert_eq!(map.get("yarn"), Some(&vec!["yarn.lock", "package.json"]));
-        assert_eq!(map.get("pnpm"), Some(&vec!["pnpm-lock.yaml", "package.json"]));
+        assert_eq!(map.get("nodejs"), Some(&vec!["package.json"]));
         
         // 测试 Maven 命令（平台相关）
         #[cfg(not(target_os = "windows"))]
@@ -81,6 +77,6 @@ mod tests {
         }
         
         // 验证总数
-        assert_eq!(map.len(), 7);
+        assert_eq!(map.len(), 5);
     }
 }
