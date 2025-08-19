@@ -56,28 +56,6 @@ impl<'a> Cmd<'a> {
             }
         }
         
-        // 删除 .npm 缓存文件夹
-        let npm_cache = dir.join(".npm");
-        if npm_cache.exists() {
-            if let Err(e) = fs::remove_dir_all(&npm_cache) {
-                eprintln!("Failed to remove {}: {}", npm_cache.display(), e);
-            } else {
-                cleaned_count += 1;
-                println!("Removed .npm/");
-            }
-        }
-        
-        // 删除 .yarn 缓存文件夹
-        let yarn_cache = dir.join(".yarn");
-        if yarn_cache.exists() {
-            if let Err(e) = fs::remove_dir_all(&yarn_cache) {
-                eprintln!("Failed to remove {}: {}", yarn_cache.display(), e);
-            } else {
-                cleaned_count += 1;
-                println!("Removed .yarn/");
-            }
-        }
-        
         if cleaned_count > 0 {
             println!("Cleaned {} Node.js artifacts", cleaned_count);
         }
