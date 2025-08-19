@@ -67,12 +67,10 @@ pub fn do_clean_all(dir: &Path,cmd_list: &mut Vec<cmd::Cmd>) -> u32 {
         });
         if !flag {
             if let Ok(entries) = fs::read_dir(dir) {
-                for entry in entries {
-                    if let Ok(entry) = entry {
-                        let path = entry.path();
-                        if path.is_dir() {
-                            count += do_clean_all(&path, cmd_list);
-                        }
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.is_dir() {
+                        count += do_clean_all(&path, cmd_list);
                     }
                 }
             }
@@ -108,12 +106,10 @@ pub fn do_clean(dir: &Path, cmd: &mut Command) {
         } else {
             // Use safe error handling instead of unwrap()
             if let Ok(entries) = fs::read_dir(dir) {
-                for entry in entries {
-                    if let Ok(entry) = entry {
-                        let path = entry.path();
-                        if path.is_dir() {
-                            do_clean(&path, cmd);
-                        }
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.is_dir() {
+                        do_clean(&path, cmd);
                     }
                 }
             }
