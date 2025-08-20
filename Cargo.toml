@@ -19,3 +19,8 @@ name = "rs_clean"
 path = "src/main.rs"
 
 [dependencies]
+clap = { version = "4.5.4", features = ["derive"] }
+colored = "2.1.0"
+walkdir = "2.5.0"
+which = "4.4.0"
+rayon = "1.10.0"

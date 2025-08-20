@@ -1,105 +1,70 @@
-use std::path::Path;
-use std::process::Command;
 use std::fs;
 use std::io;
+use std::path::Path;
+use std::process::Command;
 
 pub struct Cmd<'a> {
     pub name: &'a str,
-    pub cmd: Command,
     pub related_files: Vec<&'a str>,
 }
 
 impl<'a> Cmd<'a> {
     pub fn new(cmd_str: &'a str, related_files: Vec<&'a str>) -> Self {
-        let mut command = Command::new(cmd_str);
-        command.args(["clean"]);
         Self {
             name: cmd_str,
-            cmd: command,
             related_files,
         }
     }
-    
-    pub fn current_dir<P: AsRef<Path>>(&mut self, dir: P) {
-        self.cmd.current_dir(dir);
-    }
-    
-    pub fn run(&mut self) -> std::io::Result<std::process::Output> {
-        self.cmd.output()
-    }
-    
-    // 检查是否为需要特殊处理的命令
-    pub fn is_special_clean_command(&self) -> bool {
-        self.name == "nodejs"
-    }
-    
-    // 执行特殊清理逻辑
-    pub fn run_special_clean(&self, dir: &Path) -> io::Result<()> {
-        match self.name {
-            "nodejs" => self.clean_nodejs_project(dir),
-            _ => Ok(())
+
+    pub fn run_clean(&self, dir: &Path) -> io::Result<()> {
+        if self.name == "nodejs" {
+            return self.clean_nodejs_project(dir);
         }
+
+        let mut command = Command::new(self.name);
+        command.arg("clean");
+        command.current_dir(dir);
+
+        command.output().map(|_| ()).map_err(|e| {
+            eprintln!("Failed to execute '{} clean' in {}: {}", self.name, dir.display(), e);
+            e
+        })
     }
-    
-    // 清理 Node.js 项目
+
     fn clean_nodejs_project(&self, dir: &Path) -> io::Result<()> {
-        let mut cleaned_count = 0;
-        
-        // 删除 node_modules 文件夹
         let node_modules = dir.join("node_modules");
         if node_modules.exists() {
-            if let Err(e) = fs::remove_dir_all(&node_modules) {
-                eprintln!("Failed to remove {}: {}", node_modules.display(), e);
-            } else {
-                cleaned_count += 1;
-                println!("Removed node_modules/");
-            }
+            fs::remove_dir_all(&node_modules)?;
         }
-        
-        if cleaned_count > 0 {
-            println!("Cleaned {} Node.js artifacts", cleaned_count);
-        }
-        
         Ok(())
     }
-    
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::constant::get_cmd_map;
     use crate::utils::command_exists;
-    use super::*;
-    
+
     #[test]
-    fn test_cmd() {
+    fn test_cmd_creation() {
         let cmd = Cmd::new("cargo", vec!["Cargo.toml"]);
         assert_eq!(cmd.name, "cargo");
         assert_eq!(cmd.related_files, vec!["Cargo.toml"]);
     }
-    
+
     #[test]
-    fn test_init_cmd_list() {
+    fn test_cmd_list_initialization() {
         let map = get_cmd_map();
-        let mut cmd_list = vec![];
-        //遍历map
-        for (key, value) in map {
-            if command_exists(key) {
-                cmd_list.push(Cmd::new(key, value.clone()));
-            }
-        }
-        // 现在有7个命令：cargo, go, gradle, npm, yarn, pnpm, mvn/mvn.cmd
-        // 但测试环境中可能只有部分命令可用，所以检查总数而不是固定值
-        assert!(cmd_list.len() >= 1); // 至少应该有cargo可用
-        assert!(cmd_list.len() <= 7); // 最多7个命令
-    }
-    
-    #[test]
-    fn test_special_clean_commands() {
-        let nodejs_cmd = Cmd::new("nodejs", vec!["package.json"]);
-        let cargo_cmd = Cmd::new("cargo", vec!["Cargo.toml"]);
-        
-        assert!(nodejs_cmd.is_special_clean_command());
-        assert!(!cargo_cmd.is_special_clean_command());
+        let cmd_list: Vec<_> = map
+            .iter()
+            .filter(|(key, _)| command_exists(key))
+            .map(|(key, value)| Cmd::new(key, value.clone()))
+            .collect();
+
+        // Depending on the test environment, the number of available commands may vary.
+        // We expect at least 'cargo' to be present.
+        assert!(!cmd_list.is_empty());
+        assert!(cmd_list.iter().any(|cmd| cmd.name == "cargo"));
     }
 }

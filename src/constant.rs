@@ -13,12 +13,6 @@ pub static EXCLUDE_DIR: &[&str] = &[
     "test",
 ];
 
-// ANSI color codes for terminal output
-pub const COLOR_BLUE: &str = "\x1B[34m";
-pub const COLOR_RED: &str = "\x1B[31m";
-pub const COLOR_GREEN: &str = "\x1B[32m";
-pub const COLOR_GRAY: &str = "\x1B[90m";
-pub const COLOR_RESET: &str = "\x1B[0m";
 
 static CMD_MAP: OnceLock<HashMap<&'static str, Vec<&'static str>>> = OnceLock::new();
 
@@ -41,10 +35,6 @@ pub fn get_cmd_map() -> &'static HashMap<&'static str, Vec<&'static str>> {
     })
 }
 
-// 定义需要特殊处理的命令（不执行 clean 子命令，而是直接删除文件/文件夹）
-pub fn get_special_clean_commands() -> &'static [&'static str] {
-    &["nodejs"]
-}
 
 #[cfg(test)]
 mod tests {
