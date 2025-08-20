@@ -20,7 +20,8 @@ struct Cli {
     exclude_types: Vec<String>,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let cli = Cli::parse();
     let start = Instant::now();
 
@@ -38,7 +39,7 @@ fn main() {
         init_cmd.join(", ").blue()
     );
 
-    let count = do_clean_all(&cli.path, &cmd_list);
+    let count = do_clean_all(&cli.path, &cmd_list).await;
     let elapsed = start.elapsed();
 
     println!(

@@ -1,7 +1,7 @@
-use std::fs;
 use std::io;
 use std::path::Path;
-use std::process::Command;
+use tokio::fs;
+use tokio::process::Command;
 
 pub struct Cmd<'a> {
     pub name: &'a str,
@@ -16,25 +16,30 @@ impl<'a> Cmd<'a> {
         }
     }
 
-    pub fn run_clean(&self, dir: &Path) -> io::Result<()> {
+    pub async fn run_clean(&self, dir: &Path) -> io::Result<()> {
         if self.name == "nodejs" {
-            return self.clean_nodejs_project(dir);
+            return self.clean_nodejs_project(dir).await;
         }
 
         let mut command = Command::new(self.name);
         command.arg("clean");
         command.current_dir(dir);
 
-        command.output().map(|_| ()).map_err(|e| {
-            eprintln!("Failed to execute '{} clean' in {}: {}", self.name, dir.display(), e);
+        command.output().await.map(|_| ()).map_err(|e| {
+            eprintln!(
+                "Failed to execute '{} clean' in {}: {}",
+                self.name,
+                dir.display(),
+                e
+            );
             e
         })
     }
 
-    fn clean_nodejs_project(&self, dir: &Path) -> io::Result<()> {
+    async fn clean_nodejs_project(&self, dir: &Path) -> io::Result<()> {
         let node_modules = dir.join("node_modules");
         if node_modules.exists() {
-            fs::remove_dir_all(&node_modules)?;
+            fs::remove_dir_all(&node_modules).await?;
         }
         Ok(())
     }
