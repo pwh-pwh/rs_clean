@@ -14,6 +14,10 @@ struct Cli {
     /// The path to the directory to clean. Defaults to the current directory.
     #[arg(default_value = ".")]
     path: PathBuf,
+
+    /// Exclude certain project types from cleaning.
+    #[arg(short = 't', long = "exclude-type", value_name = "TYPE")]
+    exclude_types: Vec<String>,
 }
 
 fn main() {
@@ -23,7 +27,7 @@ fn main() {
     let map = get_cmd_map();
     let mut cmd_list = vec![];
     for (key, value) in map {
-        if command_exists(key) {
+        if command_exists(key) && !cli.exclude_types.contains(&key.to_string()) {
             cmd_list.push(Cmd::new(key, value.clone()));
         }
     }
