@@ -23,6 +23,6 @@ clap = { version = "4.5.4", features = ["derive"] }
 colored = "2.1.0"
 walkdir = "2.5.0"
 which = "4.4.0"
-tokio = { version = "1", features = ["full", "fs"] }
+tokio = { version = "1", features = ["full", "fs", "sync"] }
 futures = "0.3"
 indicatif = "0.17.8"

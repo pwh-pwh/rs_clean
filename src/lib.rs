@@ -2,6 +2,7 @@ pub mod cmd;
 pub mod constant;
 pub mod utils;
 
+
 use crate::cmd::Cmd;
 use crate::constant::EXCLUDE_DIR;
 use colored::*;
@@ -9,26 +10,46 @@ use futures::future;
 use indicatif::{ProgressBar, ProgressStyle};
 use std::path::Path;
 use std::sync::Arc;
-use tokio::fs;
+use tokio::{fs, sync::Semaphore};
 use walkdir::WalkDir;
+
+// 安全配置常量
+pub const MAX_DIRECTORY_DEPTH: usize = 50;
+pub const MAX_FILES_PER_PROJECT: usize = 10_000;
 
 async fn get_dir_size_async(path: &Path) -> u64 {
     use std::collections::VecDeque;
 
     let mut total_size = 0;
+    let mut file_count = 0;
     let mut dirs_to_visit = VecDeque::new();
 
     if path.exists() {
-        dirs_to_visit.push_back(path.to_path_buf());
+        dirs_to_visit.push_back((path.to_path_buf(), 0)); // (path, depth)
 
-        while let Some(current_dir) = dirs_to_visit.pop_front() {
+        while let Some((current_dir, depth)) = dirs_to_visit.pop_front() {
+            // 检查目录深度限制
+            if depth > MAX_DIRECTORY_DEPTH {
+                eprintln!("Warning: Maximum directory depth ({}) exceeded for {}", 
+                         MAX_DIRECTORY_DEPTH, current_dir.display());
+                continue;
+            }
+
             if let Ok(mut entries) = fs::read_dir(&current_dir).await {
                 while let Ok(Some(entry)) = entries.next_entry().await {
+                    // 检查文件数量限制
+                    if file_count > MAX_FILES_PER_PROJECT {
+                        eprintln!("Warning: Maximum file count ({}) exceeded for {}", 
+                                 MAX_FILES_PER_PROJECT, current_dir.display());
+                        return total_size;
+                    }
+
                     if let Ok(metadata) = entry.metadata().await {
                         if metadata.is_file() {
                             total_size += metadata.len();
+                            file_count += 1;
                         } else if metadata.is_dir() {
-                            dirs_to_visit.push_back(entry.path());
+                            dirs_to_visit.push_back((entry.path(), depth + 1));
                         }
                     }
                 }
@@ -37,6 +58,13 @@ async fn get_dir_size_async(path: &Path) -> u64 {
     }
 
     total_size
+}
+
+// 获取CPU逻辑核心数
+pub fn get_cpu_core_count() -> usize {
+    std::thread::available_parallelism()
+        .map(|n| n.get())
+        .unwrap_or(4) // 默认4个核心
 }
 
 pub async fn do_clean_all(dir: &Path, commands: &Vec<Cmd<'_>>) -> u32 {
@@ -93,10 +121,20 @@ pub async fn do_clean_all(dir: &Path, commands: &Vec<Cmd<'_>>) -> u32 {
 
     pb.set_message("Scanning projects...");
 
-    // 并行计算所有项目的初始大小
+    // 获取CPU核心数并设置并发限制
+    let max_concurrent = get_cpu_core_count();
+    let semaphore = Arc::new(Semaphore::new(max_concurrent));
+    
+    // 并行计算所有项目的初始大小（带并发限制）
     let size_futures: Vec<_> = cleaning_tasks
         .iter()
-        .map(|(path, _)| get_dir_size_async(path))
+        .map(|(path, _)| {
+            let semaphore = Arc::clone(&semaphore);
+            async move {
+                let _permit = semaphore.acquire().await.unwrap();
+                get_dir_size_async(path).await
+            }
+        })
         .collect();
 
     let sizes_before = future::join_all(size_futures).await;
@@ -109,14 +147,16 @@ pub async fn do_clean_all(dir: &Path, commands: &Vec<Cmd<'_>>) -> u32 {
         ));
     }
 
-    // 准备并行执行的任务
+    // 准备并行执行的任务（带并发限制）
     let cleaning_futures: Vec<_> = cleaning_tasks
         .into_iter()
         .zip(sizes_before.into_iter())
         .map(|((path, cmd_name), size_before)| {
             let pb = Arc::clone(&pb);
+            let semaphore = Arc::clone(&semaphore);
 
             async move {
+                let _permit = semaphore.acquire().await.unwrap();
                 pb.inc(1);
                 pb.set_message(format!("Cleaning {} ({})", path.display(), cmd_name));
 
