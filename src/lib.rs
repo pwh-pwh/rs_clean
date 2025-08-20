@@ -5,36 +5,41 @@ pub mod utils;
 use crate::cmd::Cmd;
 use crate::constant::EXCLUDE_DIR;
 use colored::*;
+use futures::future;
 use indicatif::{ProgressBar, ProgressStyle};
-use std::fs;
 use std::path::Path;
+use std::sync::Arc;
+use tokio::fs;
 use walkdir::WalkDir;
 
-fn get_dir_size(path: &Path) -> u64 {
+async fn get_dir_size_async(path: &Path) -> u64 {
+    use std::collections::VecDeque;
+
     let mut total_size = 0;
+    let mut dirs_to_visit = VecDeque::new();
+
     if path.exists() {
-        if let Ok(metadata) = fs::metadata(path) {
-            if metadata.is_dir() {
-                if let Ok(entries) = fs::read_dir(path) {
-                    for entry in entries.flatten() {
-                        if let Ok(metadata) = entry.metadata() {
-                            if metadata.is_file() {
-                                total_size += metadata.len();
-                            } else if metadata.is_dir() {
-                                total_size += get_dir_size(&entry.path());
-                            }
+        dirs_to_visit.push_back(path.to_path_buf());
+
+        while let Some(current_dir) = dirs_to_visit.pop_front() {
+            if let Ok(mut entries) = fs::read_dir(&current_dir).await {
+                while let Ok(Some(entry)) = entries.next_entry().await {
+                    if let Ok(metadata) = entry.metadata().await {
+                        if metadata.is_file() {
+                            total_size += metadata.len();
+                        } else if metadata.is_dir() {
+                            dirs_to_visit.push_back(entry.path());
                         }
                     }
                 }
-            } else {
-                total_size += metadata.len();
             }
         }
     }
+
     total_size
 }
 
-pub async fn do_clean_all(dir: &Path, cmd_list: &Vec<Cmd<'_>>) -> u32 {
+pub async fn do_clean_all(dir: &Path, commands: &Vec<Cmd<'_>>) -> u32 {
     let entries: Vec<_> = WalkDir::new(dir)
         .into_iter()
         .filter_map(|e| e.ok())
@@ -52,7 +57,7 @@ pub async fn do_clean_all(dir: &Path, cmd_list: &Vec<Cmd<'_>>) -> u32 {
             }
 
             let mut tasks_for_dir = vec![];
-            for cmd in cmd_list.iter() {
+            for cmd in commands.iter() {
                 if cmd
                     .related_files
                     .iter()
@@ -76,7 +81,7 @@ pub async fn do_clean_all(dir: &Path, cmd_list: &Vec<Cmd<'_>>) -> u32 {
     }
 
     let total_tasks = cleaning_tasks.len();
-    let pb = ProgressBar::new(total_tasks as u64);
+    let pb = Arc::new(ProgressBar::new(total_tasks as u64));
     pb.set_style(
         ProgressStyle::default_bar()
             .template(
@@ -88,14 +93,14 @@ pub async fn do_clean_all(dir: &Path, cmd_list: &Vec<Cmd<'_>>) -> u32 {
 
     pb.set_message("Scanning projects...");
 
-    let mut total_size_before = 0;
-    let mut project_info = Vec::new();
+    // 并行计算所有项目的初始大小
+    let size_futures: Vec<_> = cleaning_tasks
+        .iter()
+        .map(|(path, _)| get_dir_size_async(path))
+        .collect();
 
-    for (path, cmd_name) in &cleaning_tasks {
-        let size_before = get_dir_size(path);
-        total_size_before += size_before;
-        project_info.push((path.clone(), cmd_name.to_string(), size_before));
-    }
+    let sizes_before = future::join_all(size_futures).await;
+    let total_size_before: u64 = sizes_before.iter().sum();
 
     if total_size_before > 0 {
         pb.set_message(format!(
@@ -104,54 +109,64 @@ pub async fn do_clean_all(dir: &Path, cmd_list: &Vec<Cmd<'_>>) -> u32 {
         ));
     }
 
-    let mut results = vec![];
-    for (path, cmd_name, size_before) in project_info {
-        pb.inc(1);
-        pb.set_message(format!("Cleaning {} ({})", path.display(), cmd_name));
+    // 准备并行执行的任务
+    let cleaning_futures: Vec<_> = cleaning_tasks
+        .into_iter()
+        .zip(sizes_before.into_iter())
+        .map(|((path, cmd_name), size_before)| {
+            let pb = Arc::clone(&pb);
 
-        let cmd = cmd_list.iter().find(|c| c.name == cmd_name).unwrap();
-        let success = cmd.run_clean(&path).await.is_ok();
+            async move {
+                pb.inc(1);
+                pb.set_message(format!("Cleaning {} ({})", path.display(), cmd_name));
 
-        if success {
-            let size_after = get_dir_size(&path);
-            let cleaned_size = size_before.saturating_sub(size_after);
-            if cleaned_size > 0 {
-                pb.println(format!(
-                    "✓ {} {} - {}",
-                    "Cleaned".green(),
-                    path.display(),
-                    format_size(cleaned_size).cyan()
-                ));
-            } else {
-                pb.println(format!(
-                    "✓ {} {} - {}",
-                    "Cleaned".green(),
-                    path.display(),
-                    "No files removed".yellow()
-                ));
+                let cmd = commands.iter().find(|c| c.name == cmd_name).unwrap();
+                let success = cmd.run_clean(&path).await.is_ok();
+
+                if success {
+                    let size_after = get_dir_size_async(&path).await;
+                    let cleaned_size = size_before.saturating_sub(size_after);
+
+                    if cleaned_size > 0 {
+                        pb.println(format!(
+                            "✓ {} {} - {}",
+                            "Cleaned".green(),
+                            path.display(),
+                            format_size(cleaned_size).cyan()
+                        ));
+                    } else {
+                        pb.println(format!(
+                            "✓ {} {} - {}",
+                            "Cleaned".green(),
+                            path.display(),
+                            "No files removed".yellow()
+                        ));
+                    }
+                    (1, size_before, size_after)
+                } else {
+                    pb.println(format!(
+                        "✗ {} {} - {}",
+                        "Failed".red(),
+                        path.display(),
+                        cmd_name
+                    ));
+                    (0, size_before, 0)
+                }
             }
-            results.push(1);
-        } else {
-            pb.println(format!(
-                "✗ {} {} - {}",
-                "Failed".red(),
-                path.display(),
-                cmd_name
-            ));
-            results.push(0);
-        }
-    }
+        })
+        .collect();
+
+    // 并行执行所有清理任务
+    let results = future::join_all(cleaning_futures).await;
 
     pb.finish_with_message("Cleaning complete!");
 
-    let total_cleaned = results.iter().sum::<u32>();
-    if total_size_before > 0 {
-        let total_size_after = cleaning_tasks
-            .iter()
-            .map(|(path, _)| get_dir_size(path))
-            .sum::<u64>();
-        let total_freed = total_size_before.saturating_sub(total_size_after);
+    // 计算总结果
+    let total_cleaned: u32 = results.iter().map(|(count, _, _)| count).sum();
+    let total_size_after: u64 = results.iter().map(|(_, _, after)| after).sum();
+    let total_freed = total_size_before.saturating_sub(total_size_after);
 
+    if total_size_before > 0 {
         println!(
             "Total space freed: {}",
             format_size(total_freed).green().bold()
