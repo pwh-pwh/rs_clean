@@ -4,6 +4,7 @@ use rs_clean::cmd::Cmd;
 use rs_clean::constant::get_cmd_map;
 use rs_clean::do_clean_all;
 use rs_clean::utils::command_exists;
+use rs_clean::{get_cpu_core_count, MAX_DIRECTORY_DEPTH, MAX_FILES_PER_PROJECT};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -37,6 +38,20 @@ async fn main() {
     println!(
         "Found supported clean commands: {}",
         init_cmd.join(", ").blue()
+    );
+    
+    // 显示并发限制和安全信息
+    let cpu_cores = get_cpu_core_count();
+    println!(
+        "Using {} concurrent worker{} (CPU cores: {})",
+        cpu_cores,
+        if cpu_cores > 1 { "s" } else { "" },
+        cpu_cores
+    );
+    println!(
+        "Safety limits: max depth {}, max files {}",
+        MAX_DIRECTORY_DEPTH,
+        MAX_FILES_PER_PROJECT
     );
 
     let count = do_clean_all(&cli.path, &cmd_list).await;
