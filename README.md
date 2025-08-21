@@ -25,7 +25,7 @@ cargo install rs_clean
 
 ### Option 2: Download from Releases
 
-👉 [Download from GitHub Releases](https://github.com/your-repo/releases)
+👉 [Download from GitHub Releases](https://github.com/pwh-pwh/rs_clean/releases)
 Grab the latest binary for your operating system.
 
 ---

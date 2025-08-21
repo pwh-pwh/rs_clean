@@ -24,7 +24,7 @@ cargo install rs_clean
 
 ### 方式 2：从 Release 页面下载可执行文件
 
-👉 [前往 Releases 页面](https://github.com/your-repo/releases) 下载安装适合你系统的版本（如 macOS/Linux/Windows）。
+👉 [前往 Releases 页面](https://github.com/pwh-pwh/rs_clean/releases) 下载安装适合你系统的版本（如 macOS/Linux/Windows）。
 
 ---
 
