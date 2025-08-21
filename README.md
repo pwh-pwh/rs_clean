@@ -33,6 +33,15 @@ $ rs_clean folder/
 
 This command recursively removes build directories in the specified folder and its subdirectories.
 
+You can also exclude specific directory names from cleaning:
+```bash
+$ rs_clean folder/ --exclude-dir node_modules --exclude-dir build
+```
+Or exclude certain project types:
+```bash
+$ rs_clean folder/ --exclude-type go --exclude-type maven
+```
+
 ---
 
 ## 📦 Installation
@@ -111,7 +120,7 @@ my_projects/
 
 * [ ] Add interactive confirmation prompts
 * [ ] More detailed disk space reporting per project
-* [ ] Customizable exclusion lists for specific directories/files
+* [ ] Customizable exclusion lists for specific directories/files (partially implemented with `--exclude-dir`)
 
 ---
 

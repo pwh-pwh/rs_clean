@@ -19,6 +19,10 @@ struct Cli {
     /// Exclude certain project types from cleaning.
     #[arg(short = 't', long = "exclude-type", value_name = "TYPE")]
     exclude_types: Vec<String>,
+
+    /// Exclude specific directory names from cleaning.
+    #[arg(short = 'd', long = "exclude-dir", value_name = "DIR_NAME")]
+    exclude_dirs: Vec<String>,
 }
 
 #[tokio::main]
@@ -54,7 +58,7 @@ async fn main() {
         MAX_FILES_PER_PROJECT
     );
 
-    let count = do_clean_all(&cli.path, &cmd_list).await;
+    let count = do_clean_all(&cli.path, &cmd_list, &cli.exclude_dirs).await;
     let elapsed = start.elapsed();
 
     println!(

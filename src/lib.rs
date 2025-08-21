@@ -30,8 +30,8 @@ async fn get_dir_size_async(path: &Path) -> u64 {
         while let Some((current_dir, depth)) = dirs_to_visit.pop_front() {
             // 检查目录深度限制
             if depth > MAX_DIRECTORY_DEPTH {
-                eprintln!("Warning: Maximum directory depth ({}) exceeded for {}", 
-                         MAX_DIRECTORY_DEPTH, current_dir.display());
+                eprintln!("{} Warning: Maximum directory depth ({}) exceeded for {}. Size calculation might be incomplete.",
+                         "SKIP".yellow(), MAX_DIRECTORY_DEPTH, current_dir.display());
                 continue;
             }
 
@@ -39,8 +39,8 @@ async fn get_dir_size_async(path: &Path) -> u64 {
                 while let Ok(Some(entry)) = entries.next_entry().await {
                     // 检查文件数量限制
                     if file_count > MAX_FILES_PER_PROJECT {
-                        eprintln!("Warning: Maximum file count ({}) exceeded for {}", 
-                                 MAX_FILES_PER_PROJECT, current_dir.display());
+                        eprintln!("{} Warning: Maximum file count ({}) exceeded for {}. Size calculation might be incomplete.",
+                                 "SKIP".yellow(), MAX_FILES_PER_PROJECT, current_dir.display());
                         return total_size;
                     }
 
@@ -67,7 +67,7 @@ pub fn get_cpu_core_count() -> usize {
         .unwrap_or(4) // 默认4个核心
 }
 
-pub async fn do_clean_all(dir: &Path, commands: &Vec<Cmd<'_>>) -> u32 {
+pub async fn do_clean_all(dir: &Path, commands: &Vec<Cmd<'_>>, exclude_dirs: &Vec<String>) -> u32 {
     let entries: Vec<_> = WalkDir::new(dir)
         .into_iter()
         .filter_map(|e| e.ok())
@@ -79,7 +79,7 @@ pub async fn do_clean_all(dir: &Path, commands: &Vec<Cmd<'_>>) -> u32 {
         .filter_map(|entry| {
             let path = entry.path();
             if let Some(dir_name) = path.file_name().and_then(|n| n.to_str()) {
-                if EXCLUDE_DIR.contains(&dir_name) || dir_name.starts_with('.') {
+                if EXCLUDE_DIR.contains(&dir_name) || dir_name.starts_with('.') || exclude_dirs.contains(&dir_name.to_string()) {
                     return None;
                 }
             }
@@ -161,36 +161,38 @@ pub async fn do_clean_all(dir: &Path, commands: &Vec<Cmd<'_>>) -> u32 {
                 pb.set_message(format!("Cleaning {} ({})", path.display(), cmd_name));
 
                 let cmd = commands.iter().find(|c| c.name == cmd_name).unwrap();
-                let success = cmd.run_clean(&path).await.is_ok();
+                match cmd.run_clean(&path).await {
+                    Ok(_) => {
+                        let size_after = get_dir_size_async(&path).await;
+                        let cleaned_size = size_before.saturating_sub(size_after);
 
-                if success {
-                    let size_after = get_dir_size_async(&path).await;
-                    let cleaned_size = size_before.saturating_sub(size_after);
-
-                    if cleaned_size > 0 {
-                        pb.println(format!(
-                            "✓ {} {} - {}",
-                            "Cleaned".green(),
-                            path.display(),
-                            format_size(cleaned_size).cyan()
-                        ));
-                    } else {
-                        pb.println(format!(
-                            "✓ {} {} - {}",
-                            "Cleaned".green(),
-                            path.display(),
-                            "No files removed".yellow()
-                        ));
+                        if cleaned_size > 0 {
+                            pb.println(format!(
+                                "✓ {} {} - {}",
+                                "Cleaned".green(),
+                                path.display(),
+                                format_size(cleaned_size).cyan()
+                            ));
+                        } else {
+                            pb.println(format!(
+                                "✓ {} {} - {}",
+                                "Cleaned".green(),
+                                path.display(),
+                                "No files removed".yellow()
+                            ));
+                        }
+                        (1, size_before, size_after)
                     }
-                    (1, size_before, size_after)
-                } else {
-                    pb.println(format!(
-                        "✗ {} {} - {}",
-                        "Failed".red(),
-                        path.display(),
-                        cmd_name
-                    ));
-                    (0, size_before, 0)
+                    Err(e) => {
+                        pb.println(format!(
+                            "✗ {} {} - {} (Error: {})",
+                            "Failed".red(),
+                            path.display(),
+                            cmd_name,
+                            e
+                        ));
+                        (0, size_before, 0)
+                    }
                 }
             }
         })
