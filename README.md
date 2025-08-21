@@ -5,6 +5,26 @@
 📘 Looking for Chinese docs? [View 中文说明 🇨🇳](./README_zh.md)
 
 
+---
+
+## 🏗️ Architecture Overview
+
+```mermaid
+graph TD
+    A[rs_clean CLI] --> B{main.rs};
+    B --> C(Command Line Argument Parsing: clap);
+    C --> D(Initialize Cleaning Commands: constant.rs, utils.rs);
+    D -- Supported Commands --> E[lib.rs - do_clean_all];
+    E -- Recursive Scan --> F(walkdir);
+    F -- Project Identification & Task Generation --> G{cmd.rs - Cmd};
+    G -- Asynchronous Execution & Concurrency Control --> H(tokio, Semaphore, futures::join_all);
+    H -- Actual Cleaning Operation --> I(Cmd::run_clean);
+    I -- External Command Execution --> J(tokio::process::Command);
+    I -- node_modules Deletion --> K(tokio::fs::remove_dir_all);
+    E -- Result Statistics & Formatting --> L(get_dir_size_async, format_size);
+    L -- Progress Display & Final Report --> M(indicatif, colored);
+```
+
 ## 🚀 Quick Start
 
 ```bash
@@ -36,8 +56,12 @@ Grab the latest binary for your operating system.
 * ✅ Cleans **Go** build output
 * ✅ Cleans **Gradle** projects: `build/`
 * ✅ Cleans **Maven** projects: `target/`
+* ✅ Cleans **Node.js** projects: `node_modules/` (by removing `node_modules` directory directly)
 * ✅ Recursively scans subdirectories
 * ✅ Automatically detects project type
+* ✅ **Efficient Parallel Processing:** Utilizes asynchronous operations and CPU core awareness for fast, concurrent cleaning.
+* ✅ **Safety Mechanisms:** Includes limits on directory depth and file count to prevent excessive resource consumption.
+* ✅ **Disk Space Reporting:** Shows the total disk space freed after cleanup.
 
 ---
 
@@ -85,9 +109,9 @@ my_projects/
 
 ## 🛠 Roadmap
 
-* [ ] Support Node.js projects (`node_modules/`)
-* [ ] Show disk space saved after cleanup
 * [ ] Add interactive confirmation prompts
+* [ ] More detailed disk space reporting per project
+* [ ] Customizable exclusion lists for specific directories/files
 
 ---
 
