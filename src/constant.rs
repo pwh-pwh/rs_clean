@@ -74,6 +74,6 @@ mod tests {
         }
 
         // 验证总数
-        assert_eq!(map.len(), 5);
+        assert_eq!(map.len(), 7);
     }
 }
