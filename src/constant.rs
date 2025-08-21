@@ -11,6 +11,10 @@ pub static EXCLUDE_DIR: &[&str] = &[
     "src",
     "tests",
     "test",
+    "__pycache__", // Python bytecode cache
+    ".pytest_cache", // Pytest cache
+    "venv", // Python virtual environment
+    ".venv", // Python virtual environment
 ];
 
 static CMD_MAP: OnceLock<HashMap<&'static str, Vec<&'static str>>> = OnceLock::new();
@@ -23,6 +27,7 @@ pub fn get_cmd_map() -> &'static HashMap<&'static str, Vec<&'static str>> {
         m.insert("gradle", vec!["build.gradle", "build.gradle.kts"]);
         m.insert("nodejs", vec!["package.json"]); // 统一使用 nodejs 标识符
         m.insert("flutter", vec!["pubspec.yaml"]);
+        m.insert("python", vec!["requirements.txt", "pyproject.toml"]); // Python projects
         #[cfg(not(target_os = "windows"))]
         {
             m.insert("mvn", vec!["pom.xml"]);

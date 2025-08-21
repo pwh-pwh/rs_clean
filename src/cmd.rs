@@ -39,6 +39,8 @@ impl<'a> Cmd<'a> {
     pub async fn run_clean(&self, dir: &Path) -> Result<(), CleanError> {
         if self.name == "nodejs" {
             return self.clean_nodejs_project(dir).await;
+        } else if self.name == "python" {
+            return self.clean_python_project(dir).await;
         }
 
         let mut command = Command::new(self.name);
@@ -82,6 +84,39 @@ impl<'a> Cmd<'a> {
                 path: path.display().to_string(),
                 source,
             })?;
+        }
+        Ok(())
+    }
+
+    async fn clean_python_project(&self, dir: &Path) -> Result<(), CleanError> {
+        let common_python_dirs = vec![
+            "__pycache__",
+            "build",
+            "dist",
+            ".eggs",
+            "*.egg-info", // This is a glob pattern, needs special handling or direct removal if possible
+            ".pytest_cache",
+            "htmlcov",
+            ".mypy_cache",
+            "venv", // Common virtual environment name
+            ".venv", // Common virtual environment name
+        ];
+
+        for sub_dir_name in common_python_dirs {
+            // For glob patterns like "*.egg-info", we need to list and remove
+            if sub_dir_name.contains('*') {
+                let pattern = dir.join(sub_dir_name).to_string_lossy().into_owned();
+                for entry in glob::glob(&pattern).map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))? {
+                    if let Ok(path) = entry {
+                        if path.is_dir() {
+                            self.remove_dir_if_exists(&path).await?;
+                        }
+                    }
+                }
+            } else {
+                let path_to_clean = dir.join(sub_dir_name);
+                self.remove_dir_if_exists(&path_to_clean).await?;
+            }
         }
         Ok(())
     }

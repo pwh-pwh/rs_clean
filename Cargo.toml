@@ -27,3 +27,4 @@ tokio = { version = "1", features = ["full", "fs", "sync"] }
 futures = "0.3"
 indicatif = "0.17.8"
 thiserror = "1"
+glob = "0.3"

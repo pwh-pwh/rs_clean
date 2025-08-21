@@ -62,6 +62,7 @@ cargo install rs_clean
 * ✅ 支持 **Gradle** 项目 (`build/`)
 * ✅ 支持 **Maven** 项目 (`target/`)
 * ✅ 支持 **Node.js** 项目 (`node_modules/`，直接删除 `node_modules` 目录)
+* ✅ 支持 **Python** 项目 (`__pycache__/`、`venv/`、`.venv/`、`build/`、`dist/`、`.eggs/` 等，直接删除这些目录)
 * ✅ **递归扫描子目录**
 * ✅ **自动识别项目类型并清理**
 * ✅ **高效并行处理:** 利用异步操作和 CPU 核心感知能力，实现快速并发清理。

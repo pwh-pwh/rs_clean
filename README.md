@@ -66,6 +66,7 @@ Grab the latest binary for your operating system.
 * ✅ Cleans **Gradle** projects: `build/`
 * ✅ Cleans **Maven** projects: `target/`
 * ✅ Cleans **Node.js** projects: `node_modules/` (by removing `node_modules` directory directly)
+* ✅ Cleans **Python** projects: `__pycache__/`, `venv/`, `.venv/`, `build/`, `dist/`, `.eggs/`, etc. (by removing these directories directly)
 * ✅ Recursively scans subdirectories
 * ✅ Automatically detects project type
 * ✅ **Efficient Parallel Processing:** Utilizes asynchronous operations and CPU core awareness for fast, concurrent cleaning.
