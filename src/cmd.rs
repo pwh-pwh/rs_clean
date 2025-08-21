@@ -22,6 +22,12 @@ impl<'a> Cmd<'a> {
         }
 
         let mut command = Command::new(self.name);
+        #[cfg(target_os = "windows")]
+        {
+            if self.name == "flutter" {
+                command = Command::new("flutter.bat");
+            }
+        }
         command.arg("clean");
         command.current_dir(dir);
 

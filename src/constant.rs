@@ -22,6 +22,7 @@ pub fn get_cmd_map() -> &'static HashMap<&'static str, Vec<&'static str>> {
         m.insert("go", vec!["go.mod"]);
         m.insert("gradle", vec!["build.gradle", "build.gradle.kts"]);
         m.insert("nodejs", vec!["package.json"]); // 统一使用 nodejs 标识符
+        m.insert("flutter", vec!["pubspec.yaml"]);
         #[cfg(not(target_os = "windows"))]
         {
             m.insert("mvn", vec!["pom.xml"]);
