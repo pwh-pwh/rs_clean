@@ -1,4 +1,4 @@
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use colored::*;
 use rs_clean::cmd::Cmd;
 use rs_clean::config::Config;
@@ -31,11 +31,95 @@ struct Cli {
     /// Show detailed output
     #[arg(short = 'v', long = "verbose")]
     verbose: bool,
+
+    /// Configuration management commands
+    #[command(subcommand)]
+    command: Option<ConfigCommand>,
+}
+
+#[derive(Subcommand, Debug)]
+enum ConfigCommand {
+    /// Initialize a default configuration file
+    Init,
+    /// Set a configuration value
+    Set {
+        /// Configuration key to set
+        key: String,
+        /// Configuration value
+        value: String,
+    },
+    /// Show current configuration
+    Show,
 }
 
 #[tokio::main]
 async fn main() {
     let cli = Cli::parse();
+
+    // Handle config commands
+    if let Some(command) = cli.command {
+        match command {
+            ConfigCommand::Init => {
+                match Config::init_user_config().await {
+                    Ok(path) => {
+                        println!("{} Configuration file created at: {}", "Success:".green(), path.display());
+                        println!("You can now edit this file to customize your settings.");
+                    }
+                    Err(e) => {
+                        eprintln!("{} Failed to create config file: {}", "Error:".red(), e);
+                        std::process::exit(1);
+                    }
+                }
+            }
+            ConfigCommand::Set { key, value } => {
+                match Config::set_user_config_value(&key, &value).await {
+                    Ok(()) => {
+                        println!("{} Configuration updated: {} = {}", "Success:".green(), key, value);
+                    }
+                    Err(e) => {
+                        eprintln!("{} Failed to set configuration: {}", "Error:".red(), e);
+                        std::process::exit(1);
+                    }
+                }
+            }
+            ConfigCommand::Show => {
+                match Config::get_user_config().await {
+                    Ok(config) => {
+                        println!("{} Current configuration:", "Info:".blue());
+                        println!("  Config file: {}", Config::get_user_config_path().unwrap_or_default().display());
+                        if let Some(path) = &config.default_path {
+                            println!("  default_path: {}", path);
+                        }
+                        if let Some(types) = &config.exclude_types {
+                            println!("  exclude_types: {}", types.join(", "));
+                        }
+                        if let Some(dirs) = &config.exclude_dirs {
+                            println!("  exclude_dirs: {}", dirs.join(", "));
+                        }
+                        if let Some(max_concurrent) = &config.max_concurrent {
+                            println!("  max_concurrent: {}", max_concurrent);
+                        }
+                        if let Some(max_depth) = &config.max_depth {
+                            println!("  max_depth: {}", max_depth);
+                        }
+                        if let Some(max_files) = &config.max_files {
+                            println!("  max_files: {}", max_files);
+                        }
+                        if let Some(verbose) = &config.verbose {
+                            println!("  verbose: {}", verbose);
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("{} Failed to load configuration: {}", "Error:".red(), e);
+                        std::process::exit(1);
+                    }
+                }
+            }
+        }
+        return;
+    }
+
+    // Normal cleaning operation
     let start = Instant::now();
 
     // Load configuration

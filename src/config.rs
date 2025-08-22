@@ -97,7 +97,17 @@ impl Config {
             ".rs_clean.toml",
         ];
 
-        // First check current directory
+        // Check user home directory first (highest priority)
+        if let Some(home_dir) = dirs::home_dir() {
+            for filename in &config_filenames {
+                let path = home_dir.join(".rs_clean").join(filename);
+                if path.exists() {
+                    return Self::from_file(&path).await;
+                }
+            }
+        }
+
+        // Then check current directory
         for filename in &config_filenames {
             let path = current_dir.join(filename);
             if path.exists() {
@@ -168,6 +178,121 @@ impl Config {
             verbose: self.verbose.unwrap_or(false),
         }
     }
+
+    /// Get the path to the user's config directory
+    pub fn get_user_config_dir() -> Result<PathBuf, ConfigError> {
+        dirs::home_dir()
+            .ok_or_else(|| ConfigError::InvalidConfig(
+                "Failed to get home directory".to_string()
+            ))
+            .map(|home| home.join(".rs_clean"))
+    }
+
+    /// Get the path to the user's config file
+    pub fn get_user_config_path() -> Result<PathBuf, ConfigError> {
+        Self::get_user_config_dir().map(|dir| dir.join("rs_clean.toml"))
+    }
+
+    /// Initialize a default config file in the user's home directory
+    pub async fn init_user_config() -> Result<PathBuf, ConfigError> {
+        let config_path = Self::get_user_config_path()?;
+        let config_dir = config_path.parent().unwrap();
+
+        // Create config directory if it doesn't exist
+        fs::create_dir_all(config_dir).map_err(|source| ConfigError::FileReadError {
+            path: config_dir.display().to_string(),
+            source,
+        })?;
+
+        // Create default config
+        let default_config = Self::default();
+        let toml_content = toml::to_string_pretty(&default_config).map_err(|source| ConfigError::ParseError {
+            path: config_path.display().to_string(),
+            source: Box::new(source),
+        })?;
+
+        fs::write(&config_path, toml_content).map_err(|source| ConfigError::FileReadError {
+            path: config_path.display().to_string(),
+            source,
+        })?;
+
+        Ok(config_path)
+    }
+
+    /// Set a configuration value in the user's config file
+    pub async fn set_user_config_value(key: &str, value: &str) -> Result<(), ConfigError> {
+        let config_path = Self::get_user_config_path()?;
+        
+        // Load existing config or create default
+        let mut config = if config_path.exists() {
+            Self::from_file(&config_path).await?
+        } else {
+            Self::default()
+        };
+
+        // Set the value based on key
+        match key {
+            "default_path" => config.default_path = Some(value.to_string()),
+            "exclude_types" => {
+                let types: Vec<String> = value.split(',').map(|s| s.trim().to_string()).collect();
+                config.exclude_types = Some(types);
+            },
+            "exclude_dirs" => {
+                let dirs: Vec<String> = value.split(',').map(|s| s.trim().to_string()).collect();
+                config.exclude_dirs = Some(dirs);
+            },
+            "max_concurrent" => {
+                let max_concurrent = value.parse().map_err(|_| ConfigError::InvalidConfig(
+                    format!("Invalid value for max_concurrent: {}", value)
+                ))?;
+                config.max_concurrent = Some(max_concurrent);
+            },
+            "max_depth" => {
+                let max_depth = value.parse().map_err(|_| ConfigError::InvalidConfig(
+                    format!("Invalid value for max_depth: {}", value)
+                ))?;
+                config.max_depth = Some(max_depth);
+            },
+            "max_files" => {
+                let max_files = value.parse().map_err(|_| ConfigError::InvalidConfig(
+                    format!("Invalid value for max_files: {}", value)
+                ))?;
+                config.max_files = Some(max_files);
+            },
+            "verbose" => {
+                let verbose = value.parse().map_err(|_| ConfigError::InvalidConfig(
+                    format!("Invalid value for verbose: {}", value)
+                ))?;
+                config.verbose = Some(verbose);
+            },
+            _ => return Err(ConfigError::InvalidConfig(
+                format!("Unknown configuration key: {}", key)
+            )),
+        }
+
+        // Save the updated config
+        let toml_content = toml::to_string_pretty(&config).map_err(|source| ConfigError::ParseError {
+            path: config_path.display().to_string(),
+            source: Box::new(source),
+        })?;
+
+        fs::write(&config_path, toml_content).map_err(|source| ConfigError::FileReadError {
+            path: config_path.display().to_string(),
+            source,
+        })?;
+
+        Ok(())
+    }
+
+    /// Get current user configuration
+    pub async fn get_user_config() -> Result<Self, ConfigError> {
+        let config_path = Self::get_user_config_path()?;
+        if config_path.exists() {
+            Self::from_file(&config_path).await
+        } else {
+            Ok(Self::default())
+        }
+    }
 }
 
 /// Merged configuration combining config file and CLI arguments
@@ -185,6 +310,7 @@ pub struct MergedConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Write;
     use tempfile::NamedTempFile;
 
     #[tokio::test]
