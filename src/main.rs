@@ -195,7 +195,7 @@ async fn main() {
         max_files
     );
 
-    let count = do_clean_all(&merged_config.path, &cmd_list, &merged_config.exclude_dirs).await;
+    let count = do_clean_all(&merged_config.path, &cmd_list, &merged_config.exclude_dirs, merged_config.max_concurrent).await;
     let elapsed = start.elapsed();
 
     println!(

@@ -68,7 +68,7 @@ pub fn get_cpu_core_count() -> usize {
         .unwrap_or(4) // 默认4个核心
 }
 
-pub async fn do_clean_all(dir: &Path, commands: &Vec<Cmd<'_>>, exclude_dirs: &Vec<String>) -> u32 {
+pub async fn do_clean_all(dir: &Path, commands: &Vec<Cmd<'_>>, exclude_dirs: &Vec<String>, max_concurrent: Option<usize>) -> u32 {
     let entries: Vec<_> = WalkDir::new(dir)
         .into_iter()
         .filter_map(|e| e.ok())
@@ -122,9 +122,9 @@ pub async fn do_clean_all(dir: &Path, commands: &Vec<Cmd<'_>>, exclude_dirs: &Ve
 
     pb.set_message("Scanning projects...");
 
-    // 获取CPU核心数并设置并发限制
-    let max_concurrent = get_cpu_core_count();
-    let semaphore = Arc::new(Semaphore::new(max_concurrent));
+    // 使用配置的并发限制或默认值
+    let max_concurrent_limit = max_concurrent.unwrap_or_else(get_cpu_core_count);
+    let semaphore = Arc::new(Semaphore::new(max_concurrent_limit));
     
     // 并行计算所有项目的初始大小（带并发限制）
     let size_futures: Vec<_> = cleaning_tasks
