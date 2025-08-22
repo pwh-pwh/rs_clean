@@ -143,7 +143,10 @@ async fn main() {
 
     // Validate configuration
     if let Err(e) = config.validate() {
-        eprintln!("{} Invalid configuration: {}", "Error:".red(), e);
+        eprintln!("{} Configuration validation failed:", "Error:".red());
+        eprintln!("  {}", e);
+        eprintln!("{} Please check your configuration file.", "Hint:".yellow());
+        eprintln!("{} Ensure all paths exist and max_concurrent/max_depth/max_files are positive integers.", "Hint:".yellow());
         std::process::exit(1);
     }
 
@@ -151,7 +154,11 @@ async fn main() {
     let merged_config = match config.merge_with_cli(&cli.path, &cli.exclude_types, &cli.exclude_dirs) {
         Ok(config) => config,
         Err(e) => {
-            eprintln!("{} Failed to merge configuration: {}", "Error:".red(), e);
+            eprintln!("{} Configuration validation failed:", "Error:".red());
+            eprintln!("  {}", e);
+            eprintln!("{} Please check your configuration file and command line arguments.", "Hint:".yellow());
+            eprintln!("{} Valid paths must exist and be within the current directory tree.", "Hint:".yellow());
+            eprintln!("{} Exclude directory names cannot contain path separators or reserved names.", "Hint:".yellow());
             std::process::exit(1);
         }
     };
