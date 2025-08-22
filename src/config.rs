@@ -97,10 +97,10 @@ impl Config {
             ".rs_clean.toml",
         ];
 
-        // Check user home directory first (highest priority)
-        if let Some(home_dir) = dirs::home_dir() {
+        // Check user config directory first (highest priority)
+        if let Ok(user_config_dir) = Self::get_user_config_dir() {
             for filename in &config_filenames {
-                let path = home_dir.join(".rs_clean").join(filename);
+                let path = user_config_dir.join(filename);
                 if path.exists() {
                     return Self::from_file(&path).await;
                 }
@@ -180,12 +180,27 @@ impl Config {
     }
 
     /// Get the path to the user's config directory
+    /// 
+    /// Returns platform-appropriate config directory:
+    /// - Windows: %APPDATA%\rs_clean (or %LOCALAPPDATA%\rs_clean)
+    /// - Unix-like: ~/.rs_clean
     pub fn get_user_config_dir() -> Result<PathBuf, ConfigError> {
         dirs::home_dir()
             .ok_or_else(|| ConfigError::InvalidConfig(
                 "Failed to get home directory".to_string()
             ))
-            .map(|home| home.join(".rs_clean"))
+            .map(|home| {
+                // Use platform-appropriate config directory
+                if cfg!(target_os = "windows") {
+                    // On Windows, use AppData\Roaming for better compatibility
+                    dirs::data_dir()
+                        .unwrap_or_else(|| home.clone())
+                        .join("rs_clean")
+                } else {
+                    // On Unix-like systems, use hidden directory in home
+                    home.join(".rs_clean")
+                }
+            })
     }
 
     /// Get the path to the user's config file
@@ -198,11 +213,13 @@ impl Config {
         let config_path = Self::get_user_config_path()?;
         let config_dir = config_path.parent().unwrap();
 
-        // Create config directory if it doesn't exist
-        fs::create_dir_all(config_dir).map_err(|source| ConfigError::FileReadError {
-            path: config_dir.display().to_string(),
-            source,
-        })?;
+        // Create config directory if it doesn't exist with better error handling
+        if let Err(e) = fs::create_dir_all(config_dir) {
+            return Err(ConfigError::FileReadError {
+                path: config_dir.display().to_string(),
+                source: e,
+            });
+        }
 
         // Create default config
         let default_config = Self::default();
@@ -211,10 +228,13 @@ impl Config {
             source: Box::new(source),
         })?;
 
-        fs::write(&config_path, toml_content).map_err(|source| ConfigError::FileReadError {
-            path: config_path.display().to_string(),
-            source,
-        })?;
+        // Write config file with Windows-compatible handling
+        if let Err(e) = fs::write(&config_path, toml_content) {
+            return Err(ConfigError::FileReadError {
+                path: config_path.display().to_string(),
+                source: e,
+            });
+        }
 
         Ok(config_path)
     }
