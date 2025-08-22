@@ -129,27 +129,67 @@ impl Config {
 
     /// Validate configuration values
     pub fn validate(&self) -> Result<(), ConfigError> {
+        // Validate max_concurrent with reasonable bounds
         if let Some(max_concurrent) = self.max_concurrent {
             if max_concurrent == 0 {
                 return Err(ConfigError::InvalidConfig(
                     "max_concurrent must be greater than 0".to_string()
                 ));
             }
+            if max_concurrent > 64 {
+                return Err(ConfigError::InvalidConfig(
+                    format!("max_concurrent must be <= 64, got {}", max_concurrent)
+                ));
+            }
         }
 
+        // Validate max_depth with reasonable bounds
         if let Some(max_depth) = self.max_depth {
             if max_depth == 0 {
                 return Err(ConfigError::InvalidConfig(
                     "max_depth must be greater than 0".to_string()
                 ));
             }
+            if max_depth > 1000 {
+                return Err(ConfigError::InvalidConfig(
+                    format!("max_depth must be <= 1000, got {}", max_depth)
+                ));
+            }
         }
 
+        // Validate max_files with reasonable bounds
         if let Some(max_files) = self.max_files {
             if max_files == 0 {
                 return Err(ConfigError::InvalidConfig(
                     "max_files must be greater than 0".to_string()
                 ));
+            }
+            if max_files > 100000 {
+                return Err(ConfigError::InvalidConfig(
+                    format!("max_files must be <= 100000, got {}", max_files)
+                ));
+            }
+        }
+
+        // Validate default_path exists if specified
+        if let Some(ref path_str) = self.default_path {
+            let path = std::path::Path::new(path_str);
+            if !path.exists() {
+                return Err(ConfigError::InvalidConfig(
+                    format!("default_path does not exist: {}", path_str)
+                ));
+            }
+        }
+
+        // Validate exclude_types against known project types
+        if let Some(ref exclude_types) = self.exclude_types {
+            let valid_types = ["cargo", "go", "gradle", "nodejs", "flutter", "python", "mvn"];
+            for exclude_type in exclude_types {
+                if !valid_types.contains(&exclude_type.as_str()) {
+                    return Err(ConfigError::InvalidConfig(
+                        format!("Unknown exclude type: {}. Valid types: {}", exclude_type, valid_types.join(", "))
+                    ));
+                }
             }
         }
 
