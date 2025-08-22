@@ -148,7 +148,13 @@ async fn main() {
     }
 
     // Merge configuration with CLI arguments
-    let merged_config = config.merge_with_cli(&cli.path, &cli.exclude_types, &cli.exclude_dirs);
+    let merged_config = match config.merge_with_cli(&cli.path, &cli.exclude_types, &cli.exclude_dirs) {
+        Ok(config) => config,
+        Err(e) => {
+            eprintln!("{} Failed to merge configuration: {}", "Error:".red(), e);
+            std::process::exit(1);
+        }
+    };
 
     if cli.verbose || merged_config.verbose {
         println!("{} Using configuration:", "Info:".blue());

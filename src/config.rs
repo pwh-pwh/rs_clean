@@ -173,11 +173,15 @@ impl Config {
 
         // Validate default_path exists if specified
         if let Some(ref path_str) = self.default_path {
-            let path = std::path::Path::new(path_str);
-            if !path.exists() {
-                return Err(ConfigError::InvalidConfig(
-                    format!("default_path does not exist: {}", path_str)
-                ));
+            let _sanitized_path = Self::validate_and_sanitize_path(path_str)?;
+            // Note: We don't require the path to exist for validation, 
+            // but we check at runtime when it's actually used
+        }
+
+        // Validate exclude_dirs against injection attacks
+        if let Some(ref exclude_dirs) = self.exclude_dirs {
+            for exclude_dir in exclude_dirs {
+                Self::validate_exclude_dir_name(exclude_dir)?;
             }
         }
 
@@ -197,11 +201,25 @@ impl Config {
     }
 
     /// Merge with CLI arguments (CLI args take precedence)
-    pub fn merge_with_cli(&self, cli_path: &Option<PathBuf>, cli_exclude_types: &[String], cli_exclude_dirs: &[String]) -> MergedConfig {
-        MergedConfig {
-            path: cli_path.clone()
-                .or_else(|| self.default_path.as_ref().map(|p| PathBuf::from(p)))
-                .unwrap_or_else(|| PathBuf::from(".")),
+    pub fn merge_with_cli(&self, cli_path: &Option<PathBuf>, cli_exclude_types: &[String], cli_exclude_dirs: &[String]) -> Result<MergedConfig, ConfigError> {
+        // Validate and sanitize the final path
+        let final_path = if let Some(ref cli_path) = cli_path {
+            Self::validate_and_sanitize_path(&cli_path.to_string_lossy())?
+        } else if let Some(ref config_path) = self.default_path {
+            Self::validate_and_sanitize_path(config_path)?
+        } else {
+            PathBuf::from(".")
+        };
+
+        // Validate CLI exclude_dirs if provided
+        if !cli_exclude_dirs.is_empty() {
+            for exclude_dir in cli_exclude_dirs {
+                Self::validate_exclude_dir_name(exclude_dir)?;
+            }
+        }
+
+        Ok(MergedConfig {
+            path: final_path,
             exclude_types: if cli_exclude_types.is_empty() {
                 self.exclude_types.clone().unwrap_or_default()
             } else {
@@ -216,7 +234,7 @@ impl Config {
             max_depth: self.max_depth,
             max_files: self.max_files,
             verbose: self.verbose.unwrap_or(false),
-        }
+        })
     }
 
     /// Get the path to the user's config directory
@@ -353,6 +371,104 @@ impl Config {
             Ok(Self::default())
         }
     }
+
+    /// Validate and sanitize a path to prevent directory traversal attacks
+    fn validate_and_sanitize_path(path_str: &str) -> Result<PathBuf, ConfigError> {
+        let path = Path::new(path_str);
+        
+        // Check for empty path
+        if path_str.is_empty() {
+            return Err(ConfigError::InvalidConfig(
+                "Path cannot be empty".to_string()
+            ));
+        }
+
+        // Check for obvious traversal patterns
+        if path_str.contains("..") || path_str.contains("~/") {
+            return Err(ConfigError::InvalidConfig(
+                "Path traversal (..) or home directory (~) not allowed".to_string()
+            ));
+        }
+
+        // Check for absolute paths that might be dangerous
+        if path.is_absolute() {
+            // For security, we'll restrict absolute paths to common safe directories
+            let path_str_lower = path_str.to_lowercase();
+            let dangerous_patterns = [
+                "/etc", "/usr", "/bin", "/sbin", "/lib", "/boot", "/dev", "/proc",
+                "/sys", "/root", "/var", "/opt", "/windows", "/program files",
+            ];
+            
+            for pattern in &dangerous_patterns {
+                if path_str_lower.starts_with(pattern) {
+                    return Err(ConfigError::InvalidConfig(
+                        format!("Access to system directory '{}' not allowed", pattern)
+                    ));
+                }
+            }
+        }
+
+        // Try to canonicalize the path to resolve any symlinks and check existence
+        match path.canonicalize() {
+            Ok(canonical_path) => {
+                // Additional security check: ensure path doesn't escape current working directory
+                if let Ok(current_dir) = std::env::current_dir() {
+                    if let Ok(current_canonical) = current_dir.canonicalize() {
+                        if !canonical_path.starts_with(&current_canonical) {
+                            return Err(ConfigError::InvalidConfig(
+                                "Path must be within the current directory tree".to_string()
+                            ));
+                        }
+                    }
+                }
+                Ok(canonical_path)
+            }
+            Err(_) => {
+                // If canonicalization fails, the path likely doesn't exist
+                // But we still want to validate the path structure for basic safety
+                if path.exists() {
+                    return Err(ConfigError::InvalidConfig(
+                        "Path exists but cannot be canonicalized".to_string()
+                    ));
+                }
+                // For non-existent paths, we'll use the original path for validation
+                // but ensure it doesn't contain dangerous patterns
+                Ok(path.to_path_buf())
+            }
+        }
+    }
+
+    /// Validate exclude directory names to prevent injection attacks
+    fn validate_exclude_dir_name(dir_name: &str) -> Result<(), ConfigError> {
+        if dir_name.is_empty() {
+            return Err(ConfigError::InvalidConfig(
+                "Exclude directory name cannot be empty".to_string()
+            ));
+        }
+
+        // Check for path traversal attempts
+        if dir_name.contains("..") || dir_name.contains('/') || dir_name.contains('\\') {
+            return Err(ConfigError::InvalidConfig(
+                format!("Invalid exclude directory name: '{}'", dir_name)
+            ));
+        }
+
+        // Check for reserved names
+        if dir_name == "." || dir_name == ".." {
+            return Err(ConfigError::InvalidConfig(
+                format!("Reserved directory name cannot be excluded: '{}'", dir_name)
+            ));
+        }
+
+        // Check length limit
+        if dir_name.len() > 255 {
+            return Err(ConfigError::InvalidConfig(
+                "Exclude directory name too long (max 255 characters)".to_string()
+            ));
+        }
+
+        Ok(())
+    }
 }
 
 /// Merged configuration combining config file and CLI arguments
@@ -461,7 +577,7 @@ mod tests {
         let cli_exclude_types = vec!["python".to_string()];
         let cli_exclude_dirs = vec!["target".to_string()];
         
-        let merged = config.merge_with_cli(&cli_path, &cli_exclude_types, &cli_exclude_dirs);
+        let merged = config.merge_with_cli(&cli_path, &cli_exclude_types, &cli_exclude_dirs).unwrap();
         
         assert_eq!(merged.path, PathBuf::from("/cli/path"));
         assert_eq!(merged.exclude_types, vec!["python".to_string()]);
