@@ -5,6 +5,18 @@ This is an example configuration file for rs_clean. You can save this as:
 - `.rs_clean.json` or `.rs_clean.toml` for hidden config
 - `config/rs_clean.json` or `config/rs_clean.toml` in a config directory
 
+## Platform-Specific Locations
+
+### Windows
+- **User config**: `%APPDATA%\rs_clean\rs_clean.toml`
+- **Local config**: `%LOCALAPPDATA%\rs_clean\rs_clean.toml`
+- **Project config**: `rs_clean.toml` in project root
+
+### Unix-like (Linux, macOS)
+- **User config**: `~/.rs_clean/rs_clean.toml`
+- **Project config**: `rs_clean.toml` in project root
+- **Hidden config**: `.rs_clean.toml` in project root
+
 ## JSON Format Example
 
 ```json
@@ -61,3 +73,50 @@ rs_clean --config /path/to/custom-config.json
 # Show verbose output
 rs_clean --verbose
 ```
+
+## Windows-Specific Usage
+
+### Configuration Commands
+```cmd
+# Initialize user config file (creates %APPDATA%\rs_clean\rs_clean.toml)
+rs_clean config init
+
+# Set configuration values
+rs_clean config set verbose true
+rs_clean config set max_concurrent 4
+rs_clean config set exclude_types cargo,go
+
+# Show current configuration
+rs_clean config show
+```
+
+### Windows Path Examples
+```toml
+# Windows paths in configuration
+default_path = "C:\\Users\\username\\projects"
+exclude_dirs = ["node_modules", "target", "dist"]
+exclude_types = ["cargo", "go", "gradle"]
+max_concurrent = 4
+verbose = true
+```
+
+### Windows PowerShell Usage
+```powershell
+# Initialize config
+rs_clean config init
+
+# Set values with spaces in paths
+rs_clean config set default_path "C:\Projects\MyProject"
+
+# Multiple exclude types
+rs_clean config set exclude_types "cargo,go,gradle"
+
+# Run with config
+rs_clean --verbose
+```
+
+### Cross-Platform Notes
+- Configuration file format is identical across platforms
+- Path separators are handled automatically (use `/` or `\\` in Windows)
+- All commands work the same way on all platforms
+- Configuration priority: CLI args > config file > defaults
