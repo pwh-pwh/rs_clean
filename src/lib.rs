@@ -5,7 +5,6 @@ pub mod utils;
 
 
 use crate::cmd::Cmd;
-use crate::constant::EXCLUDE_DIR;
 use colored::*;
 use futures::future;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -14,11 +13,7 @@ use std::sync::Arc;
 use tokio::{fs, sync::Semaphore};
 use walkdir::WalkDir;
 
-// 安全配置常量
-pub const MAX_DIRECTORY_DEPTH: usize = 50;
-pub const MAX_FILES_PER_PROJECT: usize = 10_000;
-
-async fn get_dir_size_async(path: &Path) -> u64 {
+async fn get_dir_size_async(path: &Path, max_depth: usize, max_files: usize) -> u64 {
     use std::collections::VecDeque;
 
     let mut total_size = 0;
@@ -30,18 +25,18 @@ async fn get_dir_size_async(path: &Path) -> u64 {
 
         while let Some((current_dir, depth)) = dirs_to_visit.pop_front() {
             // 检查目录深度限制
-            if depth > MAX_DIRECTORY_DEPTH {
+            if depth > max_depth {
                 eprintln!("{} Warning: Maximum directory depth ({}) exceeded for {}. Size calculation might be incomplete.",
-                         "SKIP".yellow(), MAX_DIRECTORY_DEPTH, current_dir.display());
+                         "SKIP".yellow(), max_depth, current_dir.display());
                 continue;
             }
 
             if let Ok(mut entries) = fs::read_dir(&current_dir).await {
                 while let Ok(Some(entry)) = entries.next_entry().await {
                     // 检查文件数量限制
-                    if file_count > MAX_FILES_PER_PROJECT {
+                    if file_count > max_files {
                         eprintln!("{} Warning: Maximum file count ({}) exceeded for {}. Size calculation might be incomplete.",
-                                 "SKIP".yellow(), MAX_FILES_PER_PROJECT, current_dir.display());
+                                 "SKIP".yellow(), max_files, current_dir.display());
                         return total_size;
                     }
 
@@ -68,7 +63,14 @@ pub fn get_cpu_core_count() -> usize {
         .unwrap_or(4) // 默认4个核心
 }
 
-pub async fn do_clean_all(dir: &Path, commands: &Vec<Cmd<'_>>, exclude_dirs: &Vec<String>, max_concurrent: Option<usize>) -> u32 {
+pub async fn do_clean_all(
+    dir: &Path,
+    commands: &Vec<Cmd>,
+    exclude_dirs: &Vec<String>,
+    max_concurrent: Option<usize>,
+    max_directory_depth: usize,
+    max_files_per_project: usize,
+) -> u32 {
     let entries: Vec<_> = WalkDir::new(dir)
         .into_iter()
         .filter_map(|e| e.ok())
@@ -80,7 +82,7 @@ pub async fn do_clean_all(dir: &Path, commands: &Vec<Cmd<'_>>, exclude_dirs: &Ve
         .filter_map(|entry| {
             let path = entry.path();
             if let Some(dir_name) = path.file_name().and_then(|n| n.to_str()) {
-                if EXCLUDE_DIR.contains(&dir_name) || dir_name.starts_with('.') || exclude_dirs.contains(&dir_name.to_string()) {
+                if dir_name.starts_with('.') || exclude_dirs.contains(&dir_name.to_string()) {
                     return None;
                 }
             }
@@ -92,7 +94,7 @@ pub async fn do_clean_all(dir: &Path, commands: &Vec<Cmd<'_>>, exclude_dirs: &Ve
                     .iter()
                     .any(|file| path.join(file).exists())
                 {
-                    tasks_for_dir.push((path.to_path_buf(), cmd.name));
+                    tasks_for_dir.push((path.to_path_buf(), cmd.command_type));
                 }
             }
             if tasks_for_dir.is_empty() {
@@ -133,7 +135,7 @@ pub async fn do_clean_all(dir: &Path, commands: &Vec<Cmd<'_>>, exclude_dirs: &Ve
             let semaphore = Arc::clone(&semaphore);
             async move {
                 let _permit = semaphore.acquire().await.unwrap();
-                get_dir_size_async(path).await
+                get_dir_size_async(path, max_directory_depth, max_files_per_project).await
             }
         })
         .collect();
@@ -159,12 +161,12 @@ pub async fn do_clean_all(dir: &Path, commands: &Vec<Cmd<'_>>, exclude_dirs: &Ve
             async move {
                 let _permit = semaphore.acquire().await.unwrap();
                 pb.inc(1);
-                pb.set_message(format!("Cleaning {} ({})", path.display(), cmd_name));
+                pb.set_message(format!("Cleaning {} ({})", path.display(), cmd_name.as_str()));
 
-                let cmd = commands.iter().find(|c| c.name == cmd_name).unwrap();
+                let cmd = commands.iter().find(|c| c.command_type == cmd_name).unwrap();
                 match cmd.run_clean(&path).await {
                     Ok(_) => {
-                        let size_after = get_dir_size_async(&path).await;
+                        let size_after = get_dir_size_async(&path, max_directory_depth, max_files_per_project).await;
                         let cleaned_size = size_before.saturating_sub(size_after);
 
                         if cleaned_size > 0 {
@@ -189,7 +191,7 @@ pub async fn do_clean_all(dir: &Path, commands: &Vec<Cmd<'_>>, exclude_dirs: &Ve
                             "✗ {} {} - {} (Error: {})",
                             "Failed".red(),
                             path.display(),
-                            cmd_name,
+                            cmd_name.as_str(),
                             e
                         ));
                         (0, size_before, 0)

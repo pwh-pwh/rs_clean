@@ -23,41 +23,86 @@ pub enum CleanError {
     Unknown(#[from] io::Error),
 }
 
-pub struct Cmd<'a> {
-    pub name: &'a str,
-    pub related_files: Vec<&'a str>,
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum CommandType {
+    Cargo,
+    Go,
+    Gradle,
+    NodeJs,
+    Flutter,
+    Python,
+    Maven,
+    MavenCmd, // For Windows specific mvn.cmd
 }
 
-impl<'a> Cmd<'a> {
-    pub fn new(cmd_str: &'a str, related_files: Vec<&'a str>) -> Self {
+impl CommandType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            CommandType::Cargo => "cargo",
+            CommandType::Go => "go",
+            CommandType::Gradle => "gradle",
+            CommandType::NodeJs => "nodejs",
+            CommandType::Flutter => "flutter",
+            CommandType::Python => "python",
+            CommandType::Maven => "mvn",
+            CommandType::MavenCmd => "mvn.cmd",
+        }
+    }
+}
+
+impl From<&str> for CommandType {
+    fn from(s: &str) -> Self {
+        match s {
+            "cargo" => CommandType::Cargo,
+            "go" => CommandType::Go,
+            "gradle" => CommandType::Gradle,
+            "nodejs" => CommandType::NodeJs,
+            "flutter" => CommandType::Flutter,
+            "python" => CommandType::Python,
+            "mvn" => CommandType::Maven,
+            "mvn.cmd" => CommandType::MavenCmd,
+            _ => panic!("Unknown command type: {}", s), // Should not happen with validated input
+        }
+    }
+}
+
+pub struct Cmd {
+    pub command_type: CommandType,
+    pub related_files: Vec<&'static str>,
+}
+
+impl Cmd {
+    pub fn new(command_type: CommandType, related_files: Vec<&'static str>) -> Self {
         Self {
-            name: cmd_str,
+            command_type,
             related_files,
         }
     }
 
     pub async fn run_clean(&self, dir: &Path) -> Result<(), CleanError> {
-        if self.name == "nodejs" {
-            return self.clean_nodejs_project(dir).await;
-        } else if self.name == "python" {
-            return self.clean_python_project(dir).await;
-        }
+        match self.command_type {
+            CommandType::NodeJs => self.clean_nodejs_project(dir).await,
+            CommandType::Python => self.clean_python_project(dir).await,
+            _ => {
+                let cmd_name = self.command_type.as_str();
+                let mut command = Command::new(cmd_name);
 
-        let mut command = Command::new(self.name);
-        #[cfg(target_os = "windows")]
-        {
-            if self.name == "flutter" {
-                command = Command::new("flutter.bat");
+                #[cfg(target_os = "windows")]
+                {
+                    if self.command_type == CommandType::Flutter {
+                        command = Command::new("flutter.bat");
+                    }
+                }
+                command.arg("clean");
+                command.current_dir(dir);
+
+                command.output().await.map(|_| ()).map_err(|source| CleanError::CommandExecutionFailed {
+                    command: format!("{} clean", cmd_name),
+                    path: dir.display().to_string(),
+                    source,
+                })
             }
         }
-        command.arg("clean");
-        command.current_dir(dir);
-
-        command.output().await.map(|_| ()).map_err(|source| CleanError::CommandExecutionFailed {
-            command: format!("{} clean", self.name),
-            path: dir.display().to_string(),
-            source,
-        })
     }
 
     async fn clean_nodejs_project(&self, dir: &Path) -> Result<(), CleanError> {
@@ -130,8 +175,8 @@ mod tests {
 
     #[test]
     fn test_cmd_creation() {
-        let cmd = Cmd::new("cargo", vec!["Cargo.toml"]);
-        assert_eq!(cmd.name, "cargo");
+        let cmd = Cmd::new(CommandType::Cargo, vec!["Cargo.toml"]);
+        assert_eq!(cmd.command_type, CommandType::Cargo);
         assert_eq!(cmd.related_files, vec!["Cargo.toml"]);
     }
 
@@ -140,13 +185,13 @@ mod tests {
         let map = get_cmd_map();
         let cmd_list: Vec<_> = map
             .iter()
-            .filter(|(key, _)| command_exists(key))
-            .map(|(key, value)| Cmd::new(key, value.clone()))
+            .filter(|(key, _)| command_exists(key.as_str()))
+            .map(|(key, value)| Cmd::new(*key, value.clone()))
             .collect();
 
         // Depending on the test environment, the number of available commands may vary.
         // We expect at least 'cargo' to be present.
         assert!(!cmd_list.is_empty());
-        assert!(cmd_list.iter().any(|cmd| cmd.name == "cargo"));
+        assert!(cmd_list.iter().any(|cmd| cmd.command_type == CommandType::Cargo));
     }
 }
